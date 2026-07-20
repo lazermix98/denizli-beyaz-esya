@@ -138,3 +138,19 @@ Admin paneli ayrı route ağacı altında çalışır:
 - `/admin/settings`
 
 Tekrarlanan liste, kart, müşteri seçimi, loading ve status bileşenleri `components/shared` altında tutulur. Admin menü tanımları `features/admin/navigation.ts` dosyasından yönetilir.
+
+## Admin Data Loading
+
+Admin ekranları tek büyük veri endpointi kullanmaz. Her route yalnızca kendi ihtiyacı olan veriyi ister:
+
+- `/api/admin/summary`
+- `/api/admin/customers`
+- `/api/admin/requests`
+- `/api/admin/appointments`
+- `/api/admin/jobs`
+- `/api/admin/devices`
+- `/api/admin/ai-content`
+- `/api/admin/templates`
+- `/api/admin/pdf-data`
+
+Liste endpointleri sınırlı kolon seçer, `select=*` kullanmaz ve ilk sayfa için `limit` uygular. Dashboard tüm tabloları çekmek yerine sayım ve kısa özet verileriyle çalışır.

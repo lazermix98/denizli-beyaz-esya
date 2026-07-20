@@ -1,31 +1,45 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { aiTypes } from "../../ai-content/constants";
 import { companySettings } from "../../settings/company";
-import type { AdminData, SetupStatus } from "../../shared/types";
+import type { AdminData, AdminSection, DashboardSummary, SetupStatus } from "../../shared/types";
 import { emptyData } from "../../shared/types";
 import { currency, localDateTime, postJson } from "../../shared/utils";
 
-export function useAdminController() {
+const endpointBySection: Record<AdminSection, string> = {
+  dashboard: "/api/admin/summary",
+  customers: "/api/admin/customers",
+  requests: "/api/admin/requests",
+  appointments: "/api/admin/appointments",
+  "work-records": "/api/admin/jobs",
+  devices: "/api/admin/devices",
+  "ai-content": "/api/admin/ai-content",
+  whatsapp: "/api/admin/templates",
+  pdf: "/api/admin/pdf-data",
+  settings: "/api/auth/session",
+};
+
+export function useAdminController(section: AdminSection) {
   const [dark, setDark] = useState(false);
   const [ready, setReady] = useState(false);
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [status, setStatus] = useState("");
   const [data, setData] = useState<AdminData>(emptyData);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [login, setLogin] = useState({ email: "", password: "" });
   const [customerForm, setCustomerForm] = useState({ full_name: "", phone: "", district: companySettings.defaultDistrict, neighborhood: "" });
   const [requestForm, setRequestForm] = useState({ customer_id: "", subject: "", description: "", status: "new" });
   const [deviceForm, setDeviceForm] = useState({ customer_id: "", device_type: "", brand: "", model: "" });
   const [jobForm, setJobForm] = useState({ customer_id: "", device_id: "", title: "", description: "", status: "open", price: "0", warranty_until: "" });
-  const [appointmentForm, setAppointmentForm] = useState({
+  const [appointmentForm, setAppointmentForm] = useState(() => ({
     customer_id: "",
     job_id: "",
     appointment_at: localDateTime(new Date(Date.now() + 86400000)),
     status: "scheduled",
     note: "",
-  });
+  }));
   const [templateForm, setTemplateForm] = useState({ channel: "WhatsApp", title: "İlk temas", body: "Merhaba, talebinizi aldık. En kısa sürede dönüş yapacağız." });
   const [aiForm, setAiForm] = useState({ type: aiTypes[0], topic: "Denizli'de aynı gün servis", tone: "güven veren" });
   const [setupForm, setSetupForm] = useState({
@@ -38,20 +52,58 @@ export function useAdminController() {
   const [loading, setLoading] = useState(false);
 
   const kpis = useMemo(() => {
-    const openRequests = data.requests.filter((item) => item.status !== "done").length;
-    const openJobs = data.jobs.filter((item) => item.status !== "done").length;
-    const revenue = data.jobs.reduce((sum, item) => sum + Number(item.price || 0), 0);
+    if (summary) {
+      return [
+        ["Müşteri", summary.customerCount],
+        ["Açık talep", summary.openRequests],
+        ["Randevu", summary.appointmentCount],
+        ["Açık iş", summary.openJobs],
+        ["Ciro", currency(summary.revenue)],
+      ];
+    }
+
     return [
       ["Müşteri", data.customers.length],
-      ["Açık talep", openRequests],
+      ["Açık talep", data.requests.filter((item) => item.status !== "done").length],
       ["Randevu", data.appointments.length],
-      ["Açık iş", openJobs],
-      ["Ciro", currency(revenue)],
+      ["Açık iş", data.jobs.filter((item) => item.status !== "done").length],
+      ["Ciro", currency(data.jobs.reduce((sum, item) => sum + Number(item.price || 0), 0))],
     ];
-  }, [data]);
+  }, [data, summary]);
+
+  const loadData = useCallback(async (target: AdminSection = section) => {
+    setStatus("Veriler yükleniyor...");
+    try {
+      const res = await fetch(endpointBySection[target], { cache: "no-store" });
+      const json = (await res.json()) as Partial<AdminData> & {
+        error?: string;
+        summary?: DashboardSummary;
+        recentRequests?: AdminData["requests"];
+        recentContent?: AdminData["content"];
+      };
+      if (!res.ok) {
+        setStatus(json.error || "Veriler yüklenemedi.");
+        return;
+      }
+
+      setSummary(json.summary || null);
+      setData({
+        customers: json.customers || [],
+        requests: json.requests || json.recentRequests || [],
+        devices: json.devices || [],
+        jobs: json.jobs || [],
+        appointments: json.appointments || [],
+        content: json.content || json.recentContent || [],
+        templates: json.templates || [],
+      });
+      setStatus("Veriler Supabase üzerinden yüklendi.");
+    } catch {
+      setStatus("Supabase bağlantısı kurulamadı. Environment ayarlarını kontrol edin.");
+    }
+  }, [section]);
 
   useEffect(() => {
-    fetch("/api/setup")
+    fetch("/api/setup", { cache: "no-store" })
       .then((res) => res.json())
       .then((setup: SetupStatus) => {
         setSetupStatus(setup);
@@ -59,41 +111,17 @@ export function useAdminController() {
           setReady(true);
           return null;
         }
-        return fetch("/api/auth/session");
+        return fetch("/api/auth/session", { cache: "no-store" });
       })
       .then((res) => res?.json())
       .then((session: { authenticated?: boolean } | undefined) => {
         if (!session) return;
         setAuthenticated(Boolean(session.authenticated));
-        if (session.authenticated) void loadData();
+        if (session.authenticated) void loadData(section);
       })
       .catch(() => setStatus("Kurulum durumu kontrol edilemedi. Environment ayarlarını kontrol edin."))
       .finally(() => setReady(true));
-  }, []);
-
-  async function loadData() {
-    setStatus("Veriler yükleniyor...");
-    try {
-      const res = await fetch("/api/admin/data");
-      const json = (await res.json()) as Partial<AdminData> & { error?: string };
-      if (!res.ok) {
-        setStatus(json.error || "Veriler yüklenemedi.");
-        return;
-      }
-      setData({
-        customers: json.customers || [],
-        requests: json.requests || [],
-        devices: json.devices || [],
-        jobs: json.jobs || [],
-        appointments: json.appointments || [],
-        content: json.content || [],
-        templates: json.templates || [],
-      });
-      setStatus("Veriler Supabase üzerinden yüklendi.");
-    } catch {
-      setStatus("Supabase bağlantısı kurulamadı. Environment ayarlarını kontrol edin.");
-    }
-  }
+  }, [loadData, section]);
 
   async function createRecord(kind: string, form: Record<string, unknown>, success: string) {
     setLoading(true);
@@ -101,7 +129,7 @@ export function useAdminController() {
     try {
       await postJson("/api/admin/records", { kind, data: form });
       setStatus(success);
-      await loadData();
+      await loadData(section);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Kayıt oluşturulamadı.");
     } finally {
@@ -116,7 +144,7 @@ export function useAdminController() {
       await postJson("/api/auth/login", login);
       setAuthenticated(true);
       setStatus("Giriş başarılı.");
-      await loadData();
+      await loadData(section);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Giriş yapılamadı.");
     } finally {
@@ -133,7 +161,7 @@ export function useAdminController() {
       setSetupStatus({ ready: true, installed: true });
       setAuthenticated(true);
       setStatus(json.message || "Kurulum tamamlandı.");
-      await loadData();
+      await loadData(section);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Kurulum tamamlanamadı.");
     } finally {
@@ -145,6 +173,7 @@ export function useAdminController() {
     await fetch("/api/auth/logout", { method: "POST" });
     setAuthenticated(false);
     setData(emptyData);
+    setSummary(null);
     setStatus("Çıkış yapıldı.");
   }
 
@@ -155,7 +184,7 @@ export function useAdminController() {
     try {
       const json = await postJson<{ content?: string }>("/api/ai/content", aiForm);
       setAiResult(json.content || "");
-      await loadData();
+      await loadData(section);
     } catch (error) {
       setAiResult(error instanceof Error ? error.message : "AI içeriği üretilemedi.");
     } finally {
@@ -204,6 +233,7 @@ export function useAdminController() {
     authenticated,
     status,
     data,
+    summary,
     login,
     setLogin,
     customerForm,

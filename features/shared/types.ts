@@ -29,6 +29,14 @@ export type AdminData = {
   templates: Template[];
 };
 
+export type DashboardSummary = {
+  customerCount: number;
+  openRequests: number;
+  appointmentCount: number;
+  openJobs: number;
+  revenue: number;
+};
+
 export const emptyData: AdminData = {
   customers: [],
   requests: [],

@@ -51,6 +51,28 @@ export async function supabaseRequest<T>(path: string, init: RequestInit = {}): 
   return (await response.json()) as T;
 }
 
+export async function supabaseCount(path: string) {
+  const config = serverConfig();
+  const response = await fetch(`${config.url}/rest/v1/${path}`, {
+    method: "GET",
+    headers: {
+      apikey: config.key,
+      Authorization: `Bearer ${config.key}`,
+      Prefer: "count=exact",
+      Range: "0-0",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Supabase sayım isteği başarısız: ${response.status} ${detail}`);
+  }
+
+  const range = response.headers.get("content-range") || "0-0/0";
+  return Number(range.split("/")[1] || 0);
+}
+
 export async function selectRows<T>(query: string) {
   return supabaseRequest<T[]>(query);
 }

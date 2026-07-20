@@ -200,3 +200,26 @@ test("creates stable admin routes", async () => {
     assert.match(content, /AdminApp/);
   }
 });
+
+test("loads admin data per route without the legacy bulk endpoint", async () => {
+  await assert.rejects(access(new URL("../app/api/admin/data/route.ts", import.meta.url)));
+  const [controller, summary, customers, requests, appointments, devices, jobs, ai, templates] = await Promise.all([
+    readFile(new URL("../features/admin/hooks/useAdminController.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/summary/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/customers/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/requests/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/appointments/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/devices/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/jobs/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/ai-content/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/templates/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(controller, /endpointBySection/);
+  assert.doesNotMatch(controller, /\/api\/admin\/data/);
+  assert.match(summary, /supabaseCount/);
+  assert.doesNotMatch(summary, /select=\*/);
+  for (const source of [customers, requests, appointments, devices, jobs, ai, templates]) {
+    assert.match(source, /limit=25|limit=100/);
+    assert.doesNotMatch(source, /select=\*/);
+  }
+});

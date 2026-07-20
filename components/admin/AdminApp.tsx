@@ -19,7 +19,7 @@ import { useAdminController } from "../../features/admin/hooks/useAdminControlle
 import type { AdminSection } from "../../features/shared/types";
 
 export function AdminApp({ section }: { section: AdminSection }) {
-  const controller = useAdminController();
+  const controller = useAdminController(section);
 
   if (!controller.ready) {
     return <main className="screen-loader"><Spinner /> Uygulama hazırlanıyor</main>;
