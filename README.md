@@ -117,3 +117,24 @@ Alanlar:
 - `shared`
 
 Her modülde `types`, `validation`, `repository/data-access`, `service/business-logic`, `UI components`, `API/server actions` ve `tests` ayrı tutulmalıdır.
+
+## Frontend Route Yapısı
+
+Public sayfa sade tutulur:
+
+- `/`
+
+Admin paneli ayrı route ağacı altında çalışır:
+
+- `/admin`
+- `/admin/customers`
+- `/admin/requests`
+- `/admin/appointments`
+- `/admin/work-records`
+- `/admin/devices`
+- `/admin/ai-content`
+- `/admin/whatsapp`
+- `/admin/pdf`
+- `/admin/settings`
+
+Tekrarlanan liste, kart, müşteri seçimi, loading ve status bileşenleri `components/shared` altında tutulur. Admin menü tanımları `features/admin/navigation.ts` dosyasından yönetilir.

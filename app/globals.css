@@ -306,12 +306,20 @@ label {
   background: var(--navy);
 }
 
-.sidebar button {
+.sidebar button,
+.sidebar .nav-link {
   background: rgba(255, 255, 255, .08);
   text-align: left;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 14px;
+  font-weight: 800;
 }
 
-.sidebar button.active {
+.sidebar button.active,
+.sidebar .nav-link.active {
   background: var(--green);
 }
 

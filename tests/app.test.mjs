@@ -85,10 +85,68 @@ test("hardens public form and login endpoints", async () => {
 });
 
 test("includes production product sections and module boundaries", async () => {
-  const [page, architecture] = await Promise.all([
+  const [
+    page,
+    publicHome,
+    loginCard,
+    adminApp,
+    dashboard,
+    customers,
+    requests,
+    appointments,
+    workRecords,
+    aiContent,
+    whatsapp,
+    pdf,
+    settings,
+    setupWizard,
+    companySettings,
+    architecture,
+  ] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/public/PublicHome.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/auth/LoginCard.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/admin/AdminApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/dashboard/DashboardPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/customers/CustomersPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/requests/RequestsPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/appointments/AppointmentsPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/work-records/WorkRecordsPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/ai-content/AiContentPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/whatsapp/WhatsAppTemplatesPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/pdf/PdfPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/settings/SettingsPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/setup/SetupWizard.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../features/settings/company.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/modules/ARCHITECTURE.md", import.meta.url), "utf8"),
   ]);
+  const frontend = [
+    page,
+    publicHome,
+    loginCard,
+    adminApp,
+    dashboard,
+    customers,
+    requests,
+    appointments,
+    workRecords,
+    aiContent,
+    whatsapp,
+    pdf,
+    settings,
+    setupWizard,
+    companySettings,
+  ].join("\n");
+  assert.doesNotMatch(page, /use client/);
+  assert.match(page, /PublicHome/);
+  assert.match(adminApp, /DashboardPanel/);
+  assert.match(adminApp, /CustomersPanel/);
+  assert.match(adminApp, /RequestsPanel/);
+  assert.match(adminApp, /AppointmentsPanel/);
+  assert.match(adminApp, /WorkRecordsPanel/);
+  assert.match(adminApp, /DevicesPanel/);
+  assert.match(adminApp, /AiContentPanel/);
+  assert.match(adminApp, /WhatsAppTemplatesPanel/);
   for (const text of [
     "Müşteri talep formu",
     "Güvenli admin girişi",
@@ -104,7 +162,7 @@ test("includes production product sections and module boundaries", async () => {
     "905326397898",
     "Kurulumu Başlat",
   ]) {
-    assert.match(page, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(frontend, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   for (const domain of [
     "auth",
@@ -123,5 +181,22 @@ test("includes production product sections and module boundaries", async () => {
   ]) {
     assert.match(architecture, new RegExp(`\`${domain}\``));
   }
-  assert.doesNotMatch(page, /localStorage|demoCustomers|initialAppointments/);
+  assert.doesNotMatch(frontend, /localStorage|demoCustomers|initialAppointments/);
+});
+
+test("creates stable admin routes", async () => {
+  for (const route of [
+    "../app/admin/page.tsx",
+    "../app/admin/customers/page.tsx",
+    "../app/admin/requests/page.tsx",
+    "../app/admin/appointments/page.tsx",
+    "../app/admin/work-records/page.tsx",
+    "../app/admin/devices/page.tsx",
+    "../app/admin/ai-content/page.tsx",
+    "../app/admin/whatsapp/page.tsx",
+    "../app/admin/settings/page.tsx",
+  ]) {
+    const content = await readFile(new URL(route, import.meta.url), "utf8");
+    assert.match(content, /AdminApp/);
+  }
 });
