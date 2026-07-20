@@ -25,26 +25,26 @@ Local geliştirme için `.env.local`, production için Vercel Environment Variab
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_DB_URL=
 AUTH_SECRET=
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5-mini
 DEFAULT_COMPANY_SLUG=denizli-beyaz-esya-servisi
+ADMIN_EMAIL=admin@denizlibeyazesya.com
+ADMIN_PASSWORD=
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY`, `AUTH_SECRET` ve `OPENAI_API_KEY` kaynak koda veya GitHub'a yazılmamalıdır.
+`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD` ve `OPENAI_API_KEY` kaynak koda veya GitHub'a yazılmamalıdır.
 
-## Supabase Kurulum
+## Tek Komut Kurulum
 
-1. Supabase SQL Editor açın.
-2. `db/supabase-schema.sql` dosyasını çalıştırın.
-3. Demo müşteri seed'i yoktur; migration yalnızca gerekli tablo ve ilk demo firma kaydını oluşturur.
-4. Admin hesabı oluşturmak için:
+Migration, RLS, ilk firma kaydı ve admin hesabı tek komutla oluşturulur:
 
 ```bash
-node scripts/create-admin.mjs "admin@firma.com" "Guclu-Sifre-123" "denizli-beyaz-esya-servisi"
+npm run setup
 ```
 
-Komutun ürettiği SQL'i Supabase SQL Editor içinde çalıştırın.
+`ADMIN_PASSWORD` boş bırakılırsa komut güvenli geçici bir şifre üretir ve ekranda bir kez gösterir.
 
 ## Vercel Ayarları
 

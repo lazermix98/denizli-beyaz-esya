@@ -10,10 +10,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ignore-pattern .next",
-    "test": "npm run build && node --test tests/app.test.mjs"
+    "test": "npm run build && node --test tests/app.test.mjs",
+    "setup": "node scripts/setup.mjs"
   },
   "dependencies": {
     "next": "16.2.6",
+    "pg": "8.16.3",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
