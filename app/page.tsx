@@ -46,6 +46,7 @@ type Job = { id: string; customer_id: string; title: string; description?: strin
 type Appointment = { id: string; customer_id: string; job_id?: string; appointment_at: string; status: string; note?: string };
 type Content = { id: string; content_type: string; topic: string; output: string; created_at?: string };
 type Template = { id: string; channel: string; title?: string; body: string };
+type SetupStatus = { ready: boolean; installed: boolean; missingEnv?: string[]; error?: string };
 
 type AdminData = {
   customers: Customer[];
@@ -84,6 +85,7 @@ export default function Home() {
   const [view, setView] = useState<View>("dashboard");
   const [dark, setDark] = useState(false);
   const [ready, setReady] = useState(false);
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [status, setStatus] = useState("");
   const [data, setData] = useState<AdminData>(emptyData);
@@ -109,6 +111,12 @@ export default function Home() {
   });
   const [templateForm, setTemplateForm] = useState({ channel: "WhatsApp", title: "İlk temas", body: "Merhaba, talebinizi aldık. En kısa sürede dönüş yapacağız." });
   const [aiForm, setAiForm] = useState({ type: aiTypes[0], topic: "Denizli'de aynı gün beyaz eşya servisi", tone: "güven veren" });
+  const [setupForm, setSetupForm] = useState({
+    companyName: "Denizli Beyaz Eşya Servisi",
+    phone: "0532 639 78 98",
+    adminEmail: "",
+    adminPassword: "",
+  });
   const [aiResult, setAiResult] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -126,14 +134,24 @@ export default function Home() {
   }, [data]);
 
   useEffect(() => {
-    fetch("/api/auth/session")
+    fetch("/api/setup")
       .then((res) => res.json())
-      .then((session: { authenticated?: boolean }) => {
+      .then((setup: SetupStatus) => {
+        setSetupStatus(setup);
+        if (!setup.installed) {
+          setReady(true);
+          return null;
+        }
+        return fetch("/api/auth/session");
+      })
+      .then((res) => res?.json())
+      .then((session: { authenticated?: boolean } | undefined) => {
+        if (!session) return;
         setAuthenticated(Boolean(session.authenticated));
-        setReady(true);
         if (session.authenticated) void loadData();
       })
-      .catch(() => setReady(true));
+      .catch(() => setStatus("Kurulum durumu kontrol edilemedi. Environment ayarlarını kontrol edin."))
+      .finally(() => setReady(true));
   }, []);
 
   async function loadData() {
@@ -212,6 +230,23 @@ export default function Home() {
     }
   }
 
+  async function submitSetup(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setStatus("Kurulum başlatılıyor...");
+    try {
+      const json = (await postJson("/api/setup", setupForm)) as { message?: string };
+      setSetupStatus({ ready: true, installed: true });
+      setAuthenticated(true);
+      setStatus(json.message || "Kurulum tamamlandı.");
+      await loadData();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Kurulum tamamlanamadı.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     setAuthenticated(false);
@@ -269,6 +304,45 @@ export default function Home() {
 
   if (!ready) {
     return <main className="screen-loader"><Spinner /> Uygulama hazırlanıyor</main>;
+  }
+
+  if (setupStatus && !setupStatus.installed) {
+    return (
+      <main className="setup-screen">
+        <section className="setup-card">
+          <span className="setup-badge">İlk açılış kurulumu</span>
+          <h1>Kurulumu Başlat</h1>
+          <p>
+            Firma bilgilerini ve ilk admin hesabını girin. Sistem migration,
+            firma kaydı ve admin oluşturma işlemlerini arka planda otomatik tamamlar.
+          </p>
+          {setupStatus.missingEnv && setupStatus.missingEnv.length > 0 ? (
+            <div className="setup-warning">
+              <strong>Eksik environment değişkenleri</strong>
+              <p>{setupStatus.missingEnv.join(", ")}</p>
+              <small>
+                Bu değerler Vercel Project Settings içindeki Environment Variables alanında olmalı.
+                SQL veya terminal komutu çalıştırmanız gerekmez.
+              </small>
+            </div>
+          ) : setupStatus.error ? (
+            <div className="setup-warning">
+              <strong>Bağlantı kontrolü başarısız</strong>
+              <p>{setupStatus.error}</p>
+            </div>
+          ) : (
+            <form className="setup-form" onSubmit={submitSetup}>
+              <label>Firma adı<input required minLength={2} value={setupForm.companyName} onChange={(e) => setSetupForm({ ...setupForm, companyName: e.target.value })} /></label>
+              <label>Telefon<input required pattern="0?5[0-9\s]{9,13}" value={setupForm.phone} onChange={(e) => setSetupForm({ ...setupForm, phone: e.target.value })} /></label>
+              <label>Admin e-posta<input type="email" required value={setupForm.adminEmail} onChange={(e) => setSetupForm({ ...setupForm, adminEmail: e.target.value })} /></label>
+              <label>Şifre<input type="password" required minLength={8} value={setupForm.adminPassword} onChange={(e) => setSetupForm({ ...setupForm, adminPassword: e.target.value })} /></label>
+              <button disabled={loading} type="submit">{loading ? "Kurulum yapılıyor..." : "Kurulumu Başlat"}</button>
+            </form>
+          )}
+          {status && <p className="setup-status">{status}</p>}
+        </section>
+      </main>
+    );
   }
 
   return (

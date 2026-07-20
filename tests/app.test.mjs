@@ -17,19 +17,24 @@ test("uses standard Next.js and Vercel output", async () => {
   await assert.rejects(access(new URL("../vercel.json", import.meta.url)));
 });
 
-test("keeps secrets out of committed configuration", async () => {
-  const [envExample, gitignore, supabase, setup] = await Promise.all([
+test("keeps secrets out and supports one-click setup", async () => {
+  const [envExample, gitignore, supabase, setup, setupCore, setupRoute] = await Promise.all([
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
     readFile(new URL("../.gitignore", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/supabase.ts", import.meta.url), "utf8"),
     readFile(new URL("../scripts/setup.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/setup-core.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/setup/route.js", import.meta.url), "utf8"),
   ]);
   assert.match(gitignore, /\.env\*/);
   assert.match(envExample, /NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(envExample, /SUPABASE_SERVICE_ROLE_KEY=/);
   assert.match(envExample, /SUPABASE_DB_URL=/);
-  assert.match(setup, /db\/supabase-schema\.sql/);
-  assert.match(setup, /insert into staff_users/);
+  assert.match(setup, /runSetup/);
+  assert.match(setupCore, /db\/supabase-schema\.sql/);
+  assert.match(setupCore, /insert into staff_users/);
+  assert.match(setupRoute, /runSetup/);
+  assert.match(setupRoute, /sessionCookie/);
   assert.doesNotMatch(envExample, /sk-[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{20,}/);
   assert.match(supabase, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
 });
@@ -52,6 +57,7 @@ test("includes production product sections and multi-tenant database", async () 
     "Firma ayarları",
     "Denizli Beyaz Eşya Servisi",
     "905326397898",
+    "Kurulumu Başlat",
   ]) {
     assert.match(page, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }

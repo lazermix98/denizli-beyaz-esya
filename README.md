@@ -36,15 +36,24 @@ ADMIN_PASSWORD=
 
 `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD` ve `OPENAI_API_KEY` kaynak koda veya GitHub'a yazılmamalıdır.
 
-## Tek Komut Kurulum
+## İlk Açılış Kurulumu
 
-Migration, RLS, ilk firma kaydı ve admin hesabı tek komutla oluşturulur:
+Production ortamında terminal veya SQL çalıştırmanız gerekmez.
+
+1. GitHub `main` branch'e push edilir.
+2. Vercel otomatik deploy alır.
+3. Site ilk kez açıldığında `Kurulumu Başlat` ekranı görünür.
+4. Firma adı, telefon, admin e-posta ve şifre girilir.
+5. Migration, RLS, firma kaydı ve admin hesabı otomatik oluşturulur.
+6. Kurulum bitince admin paneli hazır olur.
+
+Yerel geliştirme veya acil bakım için aynı işlem tek komutla da çalışabilir:
 
 ```bash
 npm run setup
 ```
 
-`ADMIN_PASSWORD` boş bırakılırsa komut güvenli geçici bir şifre üretir ve ekranda bir kez gösterir.
+Bu komut SQL çıktısı üretmez; migration ve admin oluşturma işlemini doğrudan Supabase/PostgreSQL üzerinde yapar.
 
 ## Vercel Ayarları
 
