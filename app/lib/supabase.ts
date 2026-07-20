@@ -1,69 +1,41 @@
 export type DbRecord = Record<string, unknown>;
 
-function getSupabaseUrl() {
+function supabaseUrl() {
   return process.env.NEXT_PUBLIC_SUPABASE_URL;
 }
 
-function getAnonKey() {
+function anonKey() {
   return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 }
 
-function getServiceRoleKey() {
+function serviceRoleKey() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY;
 }
 
-export function getPublicSupabaseConfig() {
-  return {
-    url: getSupabaseUrl() || "",
-    anonKey: getAnonKey() || "",
-  };
-}
-
-export function isDatabaseConfigured() {
-  return Boolean(getSupabaseUrl() && getServiceRoleKey());
+export function isSupabaseConfigured() {
+  return Boolean(supabaseUrl() && serviceRoleKey());
 }
 
 export function isPublicSupabaseConfigured() {
-  return Boolean(getSupabaseUrl() && getAnonKey());
+  return Boolean(supabaseUrl() && anonKey());
 }
 
-export function requirePublicSupabaseConfig() {
-  const supabaseUrl = getSupabaseUrl();
-  const supabaseKey = getAnonKey();
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "Supabase public client yapılandırılmamış. NEXT_PUBLIC_SUPABASE_URL ve NEXT_PUBLIC_SUPABASE_ANON_KEY değerlerini ayarlayın."
-    );
+function serverConfig() {
+  const url = supabaseUrl();
+  const key = serviceRoleKey();
+  if (!url || !key) {
+    throw new Error("Supabase bağlantısı eksik. NEXT_PUBLIC_SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY ayarlanmalı.");
   }
-
-  return { supabaseUrl, supabaseKey };
+  return { url, key };
 }
 
-export function requireServerSupabaseConfig() {
-  const supabaseUrl = getSupabaseUrl();
-  const supabaseKey = getServiceRoleKey();
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "Supabase server bağlantısı eksik. NEXT_PUBLIC_SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY değerlerini ayarlayın."
-    );
-  }
-
-  return { supabaseUrl, supabaseKey };
-}
-
-export async function supabaseRequest<T>(
-  path: string,
-  init: RequestInit = {},
-  options: { publicClient?: boolean } = {}
-): Promise<T> {
-  const config = options.publicClient ? requirePublicSupabaseConfig() : requireServerSupabaseConfig();
-  const response = await fetch(`${config.supabaseUrl}/rest/v1/${path}`, {
+export async function supabaseRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const config = serverConfig();
+  const response = await fetch(`${config.url}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: config.supabaseKey,
-      Authorization: `Bearer ${config.supabaseKey}`,
+      apikey: config.key,
+      Authorization: `Bearer ${config.key}`,
       "Content-Type": "application/json",
       Prefer: "return=representation",
       ...(init.headers || {}),
@@ -75,14 +47,15 @@ export async function supabaseRequest<T>(
     throw new Error(`Supabase isteği başarısız: ${response.status} ${detail}`);
   }
 
-  if (response.status === 204) {
-    return null as T;
-  }
-
+  if (response.status === 204) return null as T;
   return (await response.json()) as T;
 }
 
-export async function insertOne<T extends DbRecord = DbRecord>(table: string, payload: DbRecord) {
+export async function selectRows<T>(query: string) {
+  return supabaseRequest<T[]>(query);
+}
+
+export async function insertRow<T extends DbRecord = DbRecord>(table: string, payload: DbRecord) {
   const rows = await supabaseRequest<T[]>(table, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -90,15 +63,7 @@ export async function insertOne<T extends DbRecord = DbRecord>(table: string, pa
   return rows[0];
 }
 
-export async function selectRows<T>(tableAndQuery: string) {
-  return supabaseRequest<T[]>(tableAndQuery, { method: "GET" });
-}
-
-export async function insertAdminRow<T extends DbRecord>(table: string, payload: T) {
-  return insertOne<T>(table, payload);
-}
-
-export async function updateAdminRow<T extends DbRecord>(table: string, id: string, payload: T) {
+export async function updateRow<T extends DbRecord = DbRecord>(table: string, id: string, payload: DbRecord) {
   const rows = await supabaseRequest<T[]>(`${table}?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
@@ -106,7 +71,7 @@ export async function updateAdminRow<T extends DbRecord>(table: string, id: stri
   return rows[0];
 }
 
-export async function deleteAdminRow(table: string, id: string) {
+export async function deleteRow(table: string, id: string) {
   await supabaseRequest<null>(`${table}?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Prefer: "return=minimal" },

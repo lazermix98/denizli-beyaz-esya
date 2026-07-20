@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Denizli Beyaz Eşya Servisi | AI Destekli Servis Yönetimi",
+  title: "İşletme AI Otomasyon | Production Ready SaaS",
   description:
-    "Denizli ve Pamukkale için beyaz eşya, klima servisi, WhatsApp talep formu, yönetici paneli ve yapay zekâ içerik üretimi.",
+    "Her sektöre uyarlanabilen müşteri, talep, randevu, iş takibi ve yapay zekâ içerik üretim sistemi. İlk demo firma: Denizli Beyaz Eşya Servisi.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -2,814 +2,422 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-const businessName = "Denizli Beyaz Eşya Servisi";
+const demoCompany = "Denizli Beyaz Eşya Servisi";
 const phoneDisplay = "0532 639 78 98";
 const phoneTel = "905326397898";
-const whatsappBase = "https://wa.me/905326397898";
+const whatsappUrl = "https://wa.me/905326397898";
 
-const aiTools = [
-  "Instagram gönderisi",
-  "Facebook gönderisi",
-  "TikTok videosu senaryosu",
-  "Google İşletme gönderisi",
-  "Blog yazısı",
-  "SEO hizmet sayfası",
-  "WhatsApp durumu",
-  "Reklam metni",
-  "Google yorum cevabı",
+const services = [
+  "Profesyonel web sitesi",
+  "Google İşletme kurulumu",
+  "Google yorum cevapları",
+  "WhatsApp yapay zekâ yanıtları",
+  "Instagram içerik üretimi",
+  "TikTok içerik üretimi",
+  "YouTube içerik üretimi",
+  "Facebook içerik üretimi",
+  "İçerik takvimi",
+  "Müşteri ve talep yönetimi",
+  "Randevu sistemi",
+  "Servis ve iş takibi",
+  "Raporlama",
+  "PDF iş veya servis formu",
 ];
 
-const dayNames = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
+const aiTypes = [
+  "Instagram gönderisi",
+  "TikTok video senaryosu",
+  "YouTube açıklaması",
+  "Facebook gönderisi",
+  "Google İşletme gönderisi",
+  "Google yorum cevabı",
+  "WhatsApp mesajı",
+  "Reklam metni",
+  "Blog yazısı",
+  "SEO hizmet sayfası",
+];
 
-type View = "dashboard" | "crm" | "ai" | "receipt" | "calendar" | "notifications" | "website";
-type RecordKind = "customer" | "device" | "service" | "appointment";
+type View = "dashboard" | "customers" | "requests" | "appointments" | "jobs" | "ai" | "templates" | "pdf" | "settings";
 
-type Customer = {
-  id: string;
-  full_name: string;
-  phone: string;
-  district: string;
-  neighborhood?: string;
-  address?: string;
-  created_at?: string;
-};
-
-type Device = {
-  id: string;
-  customer_id: string;
-  device_type: string;
-  brand: string;
-  model?: string;
-  notes?: string;
-  created_at?: string;
-};
-
-type ServiceRecord = {
-  id: string;
-  customer_id: string;
-  device_id?: string;
-  service_type: string;
-  problem_summary: string;
-  status: string;
-  appointment_at?: string;
-  technician_notes?: string;
-  operation_summary?: string;
-  warranty_until?: string;
-  created_at?: string;
-};
-
-type Appointment = {
-  id: string;
-  service_record_id: string;
-  technician_name?: string;
-  appointment_at: string;
-  status: string;
-};
-
-type Payment = { amount?: number | string; status?: string };
-type AiContent = { id?: string; content_type: string; topic: string; output: string; created_at?: string };
+type Customer = { id: string; full_name: string; phone: string; district?: string; neighborhood?: string; created_at?: string };
+type RequestRow = { id: string; customer_id?: string; subject: string; description?: string; status: string; source?: string; created_at?: string };
+type Device = { id: string; customer_id: string; device_type: string; brand?: string; model?: string };
+type Job = { id: string; customer_id: string; title: string; description?: string; status: string; price?: number; warranty_until?: string };
+type Appointment = { id: string; customer_id: string; job_id?: string; appointment_at: string; status: string; note?: string };
+type Content = { id: string; content_type: string; topic: string; output: string; created_at?: string };
+type Template = { id: string; channel: string; title?: string; body: string };
 
 type AdminData = {
   customers: Customer[];
+  requests: RequestRow[];
   devices: Device[];
-  services: ServiceRecord[];
+  jobs: Job[];
   appointments: Appointment[];
-  payments: Payment[];
-  aiContent: AiContent[];
+  content: Content[];
+  templates: Template[];
 };
 
 const emptyData: AdminData = {
   customers: [],
+  requests: [],
   devices: [],
-  services: [],
+  jobs: [],
   appointments: [],
-  payments: [],
-  aiContent: [],
+  content: [],
+  templates: [],
 };
 
-const navItems: { id: View; label: string }[] = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "crm", label: "CRM" },
-  { id: "ai", label: "AI Modülü" },
-  { id: "receipt", label: "Servis Fişi" },
-  { id: "calendar", label: "Takvim" },
-  { id: "notifications", label: "Bildirimler" },
-  { id: "website", label: "Müşteri Sitesi" },
-];
+function currency(value: number) {
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value);
+}
+
+function localDateTime(date: Date) {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
 
 function Spinner() {
   return <span className="spinner" aria-hidden="true" />;
 }
 
-function QRCode() {
-  const blocks = Array.from({ length: 49 }, (_, index) => index);
-  return (
-    <div className="qr" aria-label="Servis fişi QR kodu">
-      {blocks.map((block) => (
-        <span className={(block * 7 + block) % 5 === 0 || block < 7 || block % 7 === 0 ? "filled" : ""} key={block} />
-      ))}
-    </div>
-  );
-}
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function monthKey() {
-  return new Date().toISOString().slice(0, 7);
-}
-
-function toCurrency(value: number) {
-  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value);
-}
-
-function dayName(dateText?: string) {
-  if (!dateText) return "";
-  const date = new Date(dateText);
-  return dayNames[(date.getDay() + 6) % 7] || "";
-}
-
-function htmlDateTimeLocal(date: Date) {
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
-
 export default function Home() {
-  const [activeView, setActiveView] = useState<View>("dashboard");
-  const [darkMode, setDarkMode] = useState(false);
-  const [booting, setBooting] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [view, setView] = useState<View>("dashboard");
+  const [dark, setDark] = useState(false);
+  const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [status, setStatus] = useState("");
   const [data, setData] = useState<AdminData>(emptyData);
-  const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginStatus, setLoginStatus] = useState("");
-  const [dataStatus, setDataStatus] = useState("");
-  const [viewLoading, setViewLoading] = useState(false);
-  const [aiType, setAiType] = useState(aiTools[0]);
-  const [aiTopic, setAiTopic] = useState("Denizli'de klima bakımı için aynı gün servis");
-  const [aiResult, setAiResult] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [formStatus, setFormStatus] = useState("");
-  const [pdfStatus, setPdfStatus] = useState("");
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<string[]>([]);
-
-  const [serviceForm, setServiceForm] = useState({
+  const [login, setLogin] = useState({ email: "", password: "" });
+  const [publicForm, setPublicForm] = useState({
     fullName: "",
     phone: "",
-    device: "",
-    brand: "",
-    fault: "",
+    service: "Buzdolabı servisi",
     district: "Pamukkale",
     neighborhood: "",
     description: "",
   });
-  const [customerForm, setCustomerForm] = useState({
-    full_name: "",
-    phone: "",
-    district: "Pamukkale",
-    neighborhood: "",
-    address: "",
-  });
-  const [deviceForm, setDeviceForm] = useState({ customer_id: "", device_type: "", brand: "", model: "", notes: "" });
-  const [recordForm, setRecordForm] = useState({
-    customer_id: "",
-    device_id: "",
-    service_type: "",
-    problem_summary: "",
-    status: "new",
-    technician_notes: "",
-    operation_summary: "",
-    warranty_until: "",
-  });
+  const [customerForm, setCustomerForm] = useState({ full_name: "", phone: "", district: "Pamukkale", neighborhood: "" });
+  const [requestForm, setRequestForm] = useState({ customer_id: "", subject: "", description: "", status: "new" });
+  const [deviceForm, setDeviceForm] = useState({ customer_id: "", device_type: "", brand: "", model: "" });
+  const [jobForm, setJobForm] = useState({ customer_id: "", device_id: "", title: "", description: "", status: "open", price: "0", warranty_until: "" });
   const [appointmentForm, setAppointmentForm] = useState({
-    service_record_id: "",
-    technician_name: "",
-    appointment_at: htmlDateTimeLocal(new Date(Date.now() + 86400000)),
+    customer_id: "",
+    job_id: "",
+    appointment_at: localDateTime(new Date(Date.now() + 86400000)),
     status: "scheduled",
+    note: "",
   });
-
-  const whatsappUrl = useMemo(() => {
-    const text = `Merhaba ${businessName}, Denizli ve Pamukkale bölgesinde servis talebi oluşturmak istiyorum.`;
-    return `${whatsappBase}?text=${encodeURIComponent(text)}`;
-  }, []);
-
-  const selectedCustomer = data.customers.find((customer) => customer.id === selectedCustomerId) || data.customers[0];
-  const selectedService = data.services.find((service) => service.id === selectedServiceId) || data.services[0];
-  const selectedDevice = selectedService?.device_id
-    ? data.devices.find((device) => device.id === selectedService.device_id)
-    : selectedCustomer
-      ? data.devices.find((device) => device.customer_id === selectedCustomer.id)
-      : undefined;
+  const [templateForm, setTemplateForm] = useState({ channel: "WhatsApp", title: "İlk temas", body: "Merhaba, talebinizi aldık. En kısa sürede dönüş yapacağız." });
+  const [aiForm, setAiForm] = useState({ type: aiTypes[0], topic: "Denizli'de aynı gün beyaz eşya servisi", tone: "güven veren" });
+  const [aiResult, setAiResult] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const kpis = useMemo(() => {
-    const daily = data.services.filter((item) => item.created_at?.startsWith(todayKey())).length;
-    const monthlyRevenue = data.payments
-      .filter((item) => item.status === "paid" || !item.status)
-      .reduce((total, item) => total + Number(item.amount || 0), 0);
-    const pending = data.services.filter((item) => !["completed", "done", "tamamlandı"].includes(item.status)).length;
-    const completed = data.services.length - pending;
-    const newCustomers = data.customers.filter((item) => item.created_at?.startsWith(monthKey())).length;
+    const openRequests = data.requests.filter((item) => item.status !== "done").length;
+    const openJobs = data.jobs.filter((item) => item.status !== "done").length;
+    const revenue = data.jobs.reduce((sum, item) => sum + Number(item.price || 0), 0);
     return [
-      { label: "Günlük servis", value: String(daily), change: "Supabase", tone: "green" },
-      { label: "Aylık ciro", value: toCurrency(monthlyRevenue), change: "payments", tone: "navy" },
-      { label: "Bekleyen servis", value: String(pending), change: "canlı", tone: "amber" },
-      { label: "Tamamlanan servis", value: String(completed), change: "canlı", tone: "green" },
-      { label: "Yeni müşteriler", value: String(newCustomers), change: "bu ay", tone: "blue" },
+      ["Müşteri", data.customers.length],
+      ["Açık talep", openRequests],
+      ["Randevu", data.appointments.length],
+      ["Açık iş", openJobs],
+      ["Ciro", currency(revenue)],
     ];
   }, [data]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setBooting(false), 550);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
     fetch("/api/auth/session")
-      .then((response) => response.json())
+      .then((res) => res.json())
       .then((session: { authenticated?: boolean }) => {
         setAuthenticated(Boolean(session.authenticated));
-        setAuthChecked(true);
-        if (session.authenticated) void loadAdminData();
+        setReady(true);
+        if (session.authenticated) void loadData();
       })
-      .catch(() => {
-        setAuthenticated(false);
-        setAuthChecked(true);
-      });
+      .catch(() => setReady(true));
   }, []);
 
-  async function loadAdminData() {
-    setDataStatus("Supabase kayıtları yükleniyor...");
+  async function loadData() {
+    setStatus("Veriler yükleniyor...");
     try {
-      const response = await fetch("/api/admin/data");
-      const payload = (await response.json()) as Partial<AdminData> & { error?: string };
-      if (!response.ok) {
-        setDataStatus(payload.error || "Supabase kayıtları okunamadı.");
+      const res = await fetch("/api/admin/data");
+      const json = (await res.json()) as Partial<AdminData> & { error?: string };
+      if (!res.ok) {
+        setStatus(json.error || "Veriler yüklenemedi.");
         return;
       }
       setData({
-        customers: payload.customers || [],
-        devices: payload.devices || [],
-        services: payload.services || [],
-        appointments: payload.appointments || [],
-        payments: payload.payments || [],
-        aiContent: payload.aiContent || [],
+        customers: json.customers || [],
+        requests: json.requests || [],
+        devices: json.devices || [],
+        jobs: json.jobs || [],
+        appointments: json.appointments || [],
+        content: json.content || [],
+        templates: json.templates || [],
       });
-      setDataStatus("Supabase bağlantısı aktif. Kayıtlar gerçek veritabanından yüklendi.");
+      setStatus("Veriler Supabase üzerinden yüklendi.");
     } catch {
-      setDataStatus("Supabase bağlantısı kurulamadı. Environment değişkenlerini kontrol edin.");
+      setStatus("Supabase bağlantısı kurulamadı. Environment ayarlarını kontrol edin.");
     }
   }
 
-  function openView(view: View) {
-    setActiveView(view);
-    setViewLoading(true);
-    window.setTimeout(() => setViewLoading(false), 320);
+  async function postJson(path: string, body: unknown) {
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const json = (await res.json()) as { error?: string };
+    if (!res.ok) throw new Error(json.error || "İşlem tamamlanamadı.");
+    return json;
   }
 
-  async function createRecord(kind: RecordKind, payload: Record<string, unknown>, success: string) {
-    setDataStatus("Kaydediliyor...");
-    const response = await fetch("/api/admin/records", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind, data: payload }),
-    });
-    const result = (await response.json()) as { error?: string };
-    if (!response.ok) {
-      setDataStatus(result.error || "Kayıt oluşturulamadı.");
-      return false;
-    }
-    setNotifications((items) => [success, ...items]);
-    await loadAdminData();
-    setDataStatus(success);
-    return true;
-  }
-
-  async function submitCustomer(event: FormEvent) {
-    event.preventDefault();
-    if (await createRecord("customer", customerForm, "Yeni müşteri Supabase'e kaydedildi.")) {
-      setCustomerForm({ full_name: "", phone: "", district: "Pamukkale", neighborhood: "", address: "" });
-    }
-  }
-
-  async function submitDevice(event: FormEvent) {
-    event.preventDefault();
-    if (await createRecord("device", deviceForm, "Yeni cihaz Supabase'e kaydedildi.")) {
-      setDeviceForm({ customer_id: "", device_type: "", brand: "", model: "", notes: "" });
-    }
-  }
-
-  async function submitServiceRecord(event: FormEvent) {
-    event.preventDefault();
-    if (await createRecord("service", recordForm, "Servis kaydı Supabase'e kaydedildi.")) {
-      setRecordForm({
-        customer_id: "",
-        device_id: "",
-        service_type: "",
-        problem_summary: "",
-        status: "new",
-        technician_notes: "",
-        operation_summary: "",
-        warranty_until: "",
-      });
-    }
-  }
-
-  async function submitAppointment(event: FormEvent) {
-    event.preventDefault();
-    if (await createRecord("appointment", appointmentForm, "Randevu Supabase'e kaydedildi.")) {
-      setAppointmentForm({
-        service_record_id: "",
-        technician_name: "",
-        appointment_at: htmlDateTimeLocal(new Date(Date.now() + 86400000)),
-        status: "scheduled",
-      });
-    }
-  }
-
-  async function generateContent(event?: FormEvent) {
-    event?.preventDefault();
-    if (aiLoading) return;
-    setAiLoading(true);
-    setAiResult("");
-
+  async function createRecord(kind: string, form: Record<string, unknown>, success: string) {
+    setLoading(true);
+    setStatus("Kaydediliyor...");
     try {
-      const response = await fetch("/api/ai/content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: aiType, topic: aiTopic }),
-      });
-      const result = (await response.json()) as { content?: string; error?: string };
-      if (!response.ok || !result.content) {
-        setAiResult(result.error || "AI üretimi yapılamadı. OPENAI_API_KEY ve Supabase bağlantısını kontrol edin.");
-        return;
-      }
-      setAiResult(result.content);
-      await loadAdminData();
-    } catch {
-      setAiResult("AI endpointine ulaşılamadı. Lütfen internet ve API anahtarı ayarlarını kontrol edin.");
+      await postJson("/api/admin/records", { kind, data: form });
+      setStatus(success);
+      await loadData();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Kayıt oluşturulamadı.");
     } finally {
-      setAiLoading(false);
+      setLoading(false);
     }
   }
 
-  async function moveAppointment(day: string) {
-    if (!draggedId) return;
-    const appointment = data.appointments.find((item) => item.id === draggedId);
-    if (!appointment) return;
-    const current = new Date(appointment.appointment_at);
-    const monday = new Date(current);
-    monday.setDate(current.getDate() - ((current.getDay() + 6) % 7));
-    const nextDate = new Date(monday);
-    nextDate.setDate(monday.getDate() + dayNames.indexOf(day));
-    nextDate.setHours(current.getHours(), current.getMinutes(), 0, 0);
-
-    const response = await fetch("/api/admin/records", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kind: "appointment",
-        id: appointment.id,
-        data: { ...appointment, appointment_at: nextDate.toISOString() },
-      }),
-    });
-    const result = (await response.json()) as { error?: string };
-    setDraggedId(null);
-    if (!response.ok) {
-      setDataStatus(result.error || "Randevu taşınamadı.");
-      return;
-    }
-    setNotifications((items) => [`Randevu ${day} gününe taşındı.`, ...items]);
-    await loadAdminData();
-  }
-
-  async function submitServiceRequest(event: FormEvent) {
+  async function submitPublicRequest(event: FormEvent) {
     event.preventDefault();
-    setFormStatus("Gönderiliyor...");
+    setLoading(true);
+    setStatus("Talebiniz gönderiliyor...");
     try {
-      const response = await fetch("/api/service-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(serviceForm),
-      });
-      const result = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        setFormStatus(result.error || "Servis talebi kaydedilemedi.");
-        return;
-      }
-      setFormStatus("Servis talebi Supabase'e kaydedildi. Yönetici panelinde yeni kayıt olarak görünecek.");
-      setNotifications((items) => [`Yeni servis talebi: ${serviceForm.district} / ${serviceForm.device}`, ...items]);
-      if (authenticated) await loadAdminData();
-    } catch {
-      setFormStatus("Veritabanı bağlantısı kurulamadı. Supabase environment değişkenlerini kontrol edin.");
+      await postJson("/api/service-requests", publicForm);
+      setStatus("Talep kaydedildi. Yönetim panelinde görünür.");
+      setPublicForm({ ...publicForm, fullName: "", phone: "", neighborhood: "", description: "" });
+      if (authenticated) await loadData();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Talep kaydedilemedi.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function login(event: FormEvent) {
+  async function submitLogin(event: FormEvent) {
     event.preventDefault();
-    setLoginStatus("Giriş kontrol ediliyor...");
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-    });
-    const result = (await response.json()) as { error?: string };
-    if (!response.ok) {
-      setLoginStatus(result.error || "Giriş yapılamadı.");
-      return;
+    setLoading(true);
+    try {
+      await postJson("/api/auth/login", login);
+      setAuthenticated(true);
+      setStatus("Giriş başarılı.");
+      await loadData();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Giriş yapılamadı.");
+    } finally {
+      setLoading(false);
     }
-    setAuthenticated(true);
-    setLoginStatus("");
-    await loadAdminData();
   }
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     setAuthenticated(false);
     setData(emptyData);
+    setStatus("Çıkış yapıldı.");
+  }
+
+  async function generateAi(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setAiResult("");
+    try {
+      const json = (await postJson("/api/ai/content", aiForm)) as { content?: string };
+      setAiResult(json.content || "");
+      await loadData();
+    } catch (error) {
+      setAiResult(error instanceof Error ? error.message : "AI içeriği üretilemedi.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function downloadPdf() {
-    setPdfStatus("PDF hazırlanıyor...");
-    if (!selectedCustomer || !selectedService) {
-      setPdfStatus("PDF için müşteri ve servis kaydı seçin.");
+    const customer = data.customers[0];
+    const job = data.jobs[0];
+    if (!customer || !job) {
+      setStatus("PDF için önce müşteri ve iş kaydı oluşturun.");
       return;
     }
-    const response = await fetch("/api/service-reports/pdf", {
+    const res = await fetch("/api/service-reports/pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        customer: selectedCustomer.full_name,
-        device: selectedDevice ? `${selectedDevice.brand} ${selectedDevice.device_type}` : selectedService.service_type,
-        fault: selectedService.problem_summary,
-        operation: selectedService.operation_summary || selectedService.technician_notes || "İşlem bilgisi girilmemiş.",
-        part: "Kayıtlı parça varsa servis raporunda belirtiniz.",
-        price: "Ödeme kaydı üzerinden kontrol ediniz.",
-        warranty: selectedService.warranty_until || "Garanti süresi girilmemiş.",
+        customer: customer.full_name,
+        title: job.title,
+        description: job.description || job.title,
+        price: currency(Number(job.price || 0)),
+        warranty: job.warranty_until || "Belirtilmedi",
       }),
     });
-    if (!response.ok) {
-      setPdfStatus("PDF indirmek için yönetici girişi ve eksiksiz fiş verisi gerekli.");
+    if (!res.ok) {
+      const json = (await res.json()) as { error?: string };
+      setStatus(json.error || "PDF oluşturulamadı.");
       return;
     }
-    const blob = await response.blob();
+    const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "denizli-beyaz-esya-servis-fisi.pdf";
+    link.download = "isletme-ai-servis-formu.pdf";
     link.click();
     URL.revokeObjectURL(url);
-    setPdfStatus("PDF indirildi.");
+    setStatus("PDF indirildi.");
   }
 
-  const serviceRows = data.services.slice(0, 8);
-  const aiHistory = data.aiContent.slice(0, 8);
+  if (!ready) {
+    return <main className="screen-loader"><Spinner /> Uygulama hazırlanıyor</main>;
+  }
 
   return (
-    <main className={darkMode ? "app dark" : "app"}>
-      {booting && (
-        <div className="boot-loader" role="status">
-          <Spinner />
-          <strong>{businessName} paneli hazırlanıyor</strong>
-        </div>
-      )}
-
-      {authChecked && !authenticated && (
-        <section className="login-shell">
-          <article className="login-card">
-            <span className="brand-mark">DB</span>
-            <h1>{businessName}</h1>
-            <p>Yönetici paneli güvenli oturum olmadan açılamaz.</p>
-            <a className="call-btn" href={`tel:${phoneTel}`}>{phoneDisplay}</a>
-            <form onSubmit={login}>
-              <label>E-posta<input value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} type="email" /></label>
-              <label>Şifre<input value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} type="password" /></label>
-              <button className="primary-action" type="submit">Yönetici girişi</button>
-            </form>
-            {loginStatus && <p className="status-message">{loginStatus}</p>}
-          </article>
-          <ServiceRequestForm
-            formStatus={formStatus}
-            serviceForm={serviceForm}
-            setServiceForm={setServiceForm}
-            submitServiceRequest={submitServiceRequest}
-            whatsappUrl={whatsappUrl}
-          />
-          <FloatingActions whatsappUrl={whatsappUrl} />
+    <main className={dark ? "app dark" : "app"}>
+      <section className="site">
+        <nav className="site-nav">
+          <strong>İşletme AI Otomasyon</strong>
+          <div>
+            <a href={`tel:${phoneTel}`}>{phoneDisplay}</a>
+            <a href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp</a>
+          </div>
+        </nav>
+        <header className="hero">
+          <p>Dijital işletme yönetimi ve yapay zekâ otomasyonu</p>
+          <h1>Her sektöre uyarlanabilen müşteri, randevu, içerik ve iş takip sistemi</h1>
+          <span>İlk demo firma: {demoCompany}</span>
+          <div className="hero-actions">
+            <button onClick={() => setView("dashboard")} type="button">Yönetim panelini incele</button>
+            <a href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp talebi oluştur</a>
+          </div>
+        </header>
+        <section className="service-grid">
+          {services.map((service) => <article key={service}>{service}</article>)}
         </section>
-      )}
+        <form className="public-form" onSubmit={submitPublicRequest}>
+          <h2>Müşteri talep formu</h2>
+          <div className="form-grid">
+            <label>Ad Soyad<input required minLength={3} value={publicForm.fullName} onChange={(e) => setPublicForm({ ...publicForm, fullName: e.target.value })} /></label>
+            <label>Telefon<input required pattern="0?5[0-9]{9}" value={publicForm.phone} onChange={(e) => setPublicForm({ ...publicForm, phone: e.target.value })} /></label>
+            <label>Hizmet<input required value={publicForm.service} onChange={(e) => setPublicForm({ ...publicForm, service: e.target.value })} /></label>
+            <label>İlçe<input required value={publicForm.district} onChange={(e) => setPublicForm({ ...publicForm, district: e.target.value })} /></label>
+            <label>Mahalle<input required value={publicForm.neighborhood} onChange={(e) => setPublicForm({ ...publicForm, neighborhood: e.target.value })} /></label>
+          </div>
+          <label>Açıklama<textarea required minLength={8} rows={4} value={publicForm.description} onChange={(e) => setPublicForm({ ...publicForm, description: e.target.value })} /></label>
+          <button disabled={loading} type="submit">{loading ? "Gönderiliyor..." : "Talebi kaydet"}</button>
+        </form>
+      </section>
 
-      {authChecked && authenticated ? (
-        <>
-          <aside className="sidebar">
-            <a className="brand" href="#dashboard" onClick={() => openView("dashboard")} aria-label={businessName}>
-              <span className="brand-mark">DB</span>
-              <span>
-                <strong>{businessName}</strong>
-                <small>SaaS Servis Yönetimi</small>
-              </span>
-            </a>
-            <nav className="app-nav" aria-label="Yönetici menüsü">
-              {navItems.map((item) => (
-                <button className={activeView === item.id ? "active" : ""} key={item.id} onClick={() => openView(item.id)} type="button">
-                  {item.label}
-                </button>
+      <section className="admin-shell">
+        {!authenticated ? (
+          <form className="login-card" onSubmit={submitLogin}>
+            <h2>Güvenli admin girişi</h2>
+            <p>Admin paneli oturum olmadan açılmaz. Supabase yoksa uygulama çökmek yerine anlaşılır hata verir.</p>
+            <label>E-posta<input type="email" required value={login.email} onChange={(e) => setLogin({ ...login, email: e.target.value })} /></label>
+            <label>Şifre<input type="password" required value={login.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} /></label>
+            <button disabled={loading} type="submit">Giriş yap</button>
+          </form>
+        ) : (
+          <section className="panel-layout">
+            <aside className="sidebar">
+              {(["dashboard", "customers", "requests", "appointments", "jobs", "ai", "templates", "pdf", "settings"] as View[]).map((item) => (
+                <button className={view === item ? "active" : ""} key={item} onClick={() => setView(item)} type="button">{item}</button>
               ))}
-            </nav>
-            <div className="sidebar-card">
-              <span>Canlı destek</span>
-              <a href={`tel:${phoneTel}`}>{phoneDisplay}</a>
-              <a href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp</a>
-            </div>
-          </aside>
-
-          <section className="workspace">
-            <header className="topbar">
-              <div>
-                <p>Supabase bağlantılı operasyon paneli</p>
-                <h1>{businessName}</h1>
-              </div>
-              <div className="topbar-actions">
-                <button onClick={() => void loadAdminData()} type="button">Verileri yenile</button>
-                <button onClick={() => setDarkMode((value) => !value)} type="button">{darkMode ? "Açık tema" : "Karanlık tema"}</button>
-                <button onClick={logout} type="button">Çıkış</button>
-                <a className="call-btn" href={`tel:${phoneTel}`}>{phoneDisplay}</a>
-              </div>
-            </header>
-
-            {viewLoading && <div className="view-loader" role="status"><Spinner /> Sayfa yükleniyor</div>}
-            {dataStatus && <p className="status-message">{dataStatus}</p>}
-
-            {activeView === "dashboard" && (
-              <section className="view-grid dashboard-view" id="dashboard">
-                <div className="kpi-grid">
-                  {kpis.map((kpi) => (
-                    <article className={`kpi ${kpi.tone}`} key={kpi.label}>
-                      <span>{kpi.label}</span>
-                      <strong>{kpi.value}</strong>
-                      <em>{kpi.change}</em>
-                    </article>
-                  ))}
-                </div>
-                <article className="panel wide">
-                  <div className="panel-head">
-                    <h2>Günlük servis akışı</h2>
-                    <button onClick={() => openView("calendar")} type="button">Takvime git</button>
-                  </div>
-                  {serviceRows.length === 0 && <p>Henüz Supabase servis kaydı yok.</p>}
-                  {serviceRows.map((row) => {
-                    const customer = data.customers.find((item) => item.id === row.customer_id);
-                    return (
-                      <div className="service-row" key={row.id}>
-                        <span>{row.created_at?.slice(11, 16) || "--:--"}</span>
-                        <strong>{customer?.full_name || "Müşteri"}</strong>
-                        <em>{row.service_type}</em>
-                        <b>{row.status}</b>
-                        <small>{row.problem_summary}</small>
-                      </div>
-                    );
-                  })}
-                </article>
-                <article className="panel">
-                  <h2>Son yorumlar</h2>
-                  <p>Yorum kaynağı bağlanınca gerçek müşteri yorumları burada listelenecek.</p>
-                </article>
-                <article className="panel">
-                  <h2>Son AI içerikleri</h2>
-                  {aiHistory.length === 0 && <p>Henüz Supabase AI içerik kaydı yok.</p>}
-                  {aiHistory.map((item) => <p className="activity" key={item.id || item.topic}>{item.content_type}: {item.topic}</p>)}
-                </article>
-              </section>
-            )}
-
-            {activeView === "crm" && (
-              <section className="view-grid crm-view">
-                <article className="panel customer-list">
-                  <div className="panel-head"><h2>Müşteri kartları</h2></div>
-                  {data.customers.length === 0 && <p>Yeni müşteri formuyla ilk gerçek kaydı oluşturun.</p>}
-                  {data.customers.map((customer) => {
-                    const device = data.devices.find((item) => item.customer_id === customer.id);
-                    return (
-                      <button className={selectedCustomer?.id === customer.id ? "customer-card active" : "customer-card"} key={customer.id} onClick={() => setSelectedCustomerId(customer.id)} type="button">
-                        <strong>{customer.full_name}</strong>
-                        <span>{device ? `${device.brand} ${device.device_type}` : "Cihaz eklenmedi"}</span>
-                        <em>{customer.district}</em>
-                      </button>
-                    );
-                  })}
-                  <form className="mini-form" onSubmit={submitCustomer}>
-                    <h3>Yeni müşteri</h3>
-                    <label>Ad Soyad<input value={customerForm.full_name} onChange={(event) => setCustomerForm({ ...customerForm, full_name: event.target.value })} /></label>
-                    <label>Telefon<input value={customerForm.phone} onChange={(event) => setCustomerForm({ ...customerForm, phone: event.target.value })} /></label>
-                    <label>İlçe<input value={customerForm.district} onChange={(event) => setCustomerForm({ ...customerForm, district: event.target.value })} /></label>
-                    <label>Mahalle<input value={customerForm.neighborhood} onChange={(event) => setCustomerForm({ ...customerForm, neighborhood: event.target.value })} /></label>
-                    <button className="primary-action" type="submit">Yeni müşteri kaydet</button>
+              <button onClick={() => void loadData()} type="button">Yenile</button>
+              <button onClick={() => setDark((value) => !value)} type="button">Tema</button>
+              <button onClick={logout} type="button">Çıkış</button>
+            </aside>
+            <section className="workspace">
+              <div className="kpis">{kpis.map(([label, value]) => <article key={label}><span>{label}</span><strong>{value}</strong></article>)}</div>
+              {view === "dashboard" && <List title="Son talepler" items={data.requests.map((item) => `${item.subject} - ${item.status}`)} />}
+              {view === "customers" && (
+                <Crud title="Müşteriler" items={data.customers.map((item) => `${item.full_name} - ${item.phone}`)}>
+                  <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("customer", customerForm, "Müşteri kaydedildi."); }}>
+                    <input placeholder="Ad soyad" value={customerForm.full_name} onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })} />
+                    <input placeholder="Telefon" value={customerForm.phone} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} />
+                    <input placeholder="İlçe" value={customerForm.district} onChange={(e) => setCustomerForm({ ...customerForm, district: e.target.value })} />
+                    <input placeholder="Mahalle" value={customerForm.neighborhood} onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })} />
+                    <button type="submit">Müşteri oluştur</button>
                   </form>
-                </article>
-
-                <article className="panel crm-detail wide">
-                  <div className="panel-head">
-                    <h2>{selectedCustomer ? `${selectedCustomer.full_name} CRM dosyası` : "CRM dosyası"}</h2>
-                    {selectedCustomer && <a href={`tel:${selectedCustomer.phone}`}>{selectedCustomer.phone}</a>}
-                  </div>
-                  <div className="crm-grid">
-                    <section><h3>Cihaz geçmişi</h3>{data.devices.filter((item) => item.customer_id === selectedCustomer?.id).map((item) => <p key={item.id}>{item.brand} {item.device_type} {item.model || ""}</p>)}</section>
-                    <section><h3>Yapılan işlemler</h3>{data.services.filter((item) => item.customer_id === selectedCustomer?.id).map((item) => <p key={item.id}>{item.operation_summary || item.problem_summary}</p>)}</section>
-                    <section><h3>Kullanılan parçalar</h3><p>Kullanılan parça kayıtları Supabase used_parts tablosundan raporlanır.</p></section>
-                    <section><h3>Garanti süresi</h3>{data.services.filter((item) => item.customer_id === selectedCustomer?.id).map((item) => <p key={item.id}>{item.warranty_until || "Garanti tarihi girilmedi"}</p>)}</section>
-                  </div>
-                  <label>Teknisyen notları<textarea value={selectedService?.technician_notes || ""} readOnly rows={4} /></label>
-                  <div className="form-grid">
-                    <form className="mini-form" onSubmit={submitDevice}>
-                      <h3>Yeni cihaz</h3>
-                      <label>Müşteri<select value={deviceForm.customer_id} onChange={(event) => setDeviceForm({ ...deviceForm, customer_id: event.target.value })}><option value="">Seçin</option>{data.customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.full_name}</option>)}</select></label>
-                      <label>Cihaz<input value={deviceForm.device_type} onChange={(event) => setDeviceForm({ ...deviceForm, device_type: event.target.value })} /></label>
-                      <label>Marka<input value={deviceForm.brand} onChange={(event) => setDeviceForm({ ...deviceForm, brand: event.target.value })} /></label>
-                      <label>Model<input value={deviceForm.model} onChange={(event) => setDeviceForm({ ...deviceForm, model: event.target.value })} /></label>
-                      <button className="primary-action" type="submit">Yeni cihaz kaydet</button>
-                    </form>
-                    <form className="mini-form" onSubmit={submitServiceRecord}>
-                      <h3>Servis kaydı</h3>
-                      <label>Müşteri<select value={recordForm.customer_id} onChange={(event) => setRecordForm({ ...recordForm, customer_id: event.target.value, device_id: "" })}><option value="">Seçin</option>{data.customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.full_name}</option>)}</select></label>
-                      <label>Cihaz<select value={recordForm.device_id} onChange={(event) => setRecordForm({ ...recordForm, device_id: event.target.value })}><option value="">Seçin</option>{data.devices.filter((device) => !recordForm.customer_id || device.customer_id === recordForm.customer_id).map((device) => <option value={device.id} key={device.id}>{device.brand} {device.device_type}</option>)}</select></label>
-                      <label>Servis türü<input value={recordForm.service_type} onChange={(event) => setRecordForm({ ...recordForm, service_type: event.target.value })} /></label>
-                      <label>Arıza<textarea value={recordForm.problem_summary} onChange={(event) => setRecordForm({ ...recordForm, problem_summary: event.target.value })} rows={3} /></label>
-                      <button className="primary-action" type="submit">Servis kaydı oluştur</button>
-                    </form>
-                  </div>
-                </article>
-              </section>
-            )}
-
-            {activeView === "ai" && (
-              <section className="view-grid ai-view">
-                <article className="panel wide">
-                  <div className="panel-head">
-                    <h2>Tek tık AI içerik üretimi</h2>
-                    <button disabled={aiLoading} onClick={() => generateContent()} type="button">{aiLoading ? "Üretiliyor" : "Tek tıkla üret"}</button>
-                  </div>
-                  <div className="tool-grid">
-                    {aiTools.map((tool) => <button className={aiType === tool ? "active" : ""} key={tool} onClick={() => setAiType(tool)} type="button">{tool}</button>)}
-                  </div>
-                  <form className="ai-form" onSubmit={generateContent}>
-                    <label>Konu<textarea value={aiTopic} onChange={(event) => setAiTopic(event.target.value)} rows={3} /></label>
-                    <button className="primary-action" disabled={aiLoading} type="submit">{aiLoading ? <><Spinner /> AI çalışıyor</> : "İçerik üret"}</button>
+                  <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("device", deviceForm, "Cihaz kaydedildi."); }}>
+                    <SelectCustomer customers={data.customers} value={deviceForm.customer_id} onChange={(value) => setDeviceForm({ ...deviceForm, customer_id: value })} />
+                    <input placeholder="Cihaz türü" value={deviceForm.device_type} onChange={(e) => setDeviceForm({ ...deviceForm, device_type: e.target.value })} />
+                    <input placeholder="Marka" value={deviceForm.brand} onChange={(e) => setDeviceForm({ ...deviceForm, brand: e.target.value })} />
+                    <input placeholder="Model" value={deviceForm.model} onChange={(e) => setDeviceForm({ ...deviceForm, model: e.target.value })} />
+                    <button type="submit">Cihaz ekle</button>
                   </form>
-                  <output>{aiResult || "Üretilen profesyonel içerik burada görünecek."}</output>
-                  <div className="history-list">
-                    <h3>İçerik geçmişi</h3>
-                    {aiHistory.length === 0 && <p>Henüz ai_content_items tablosunda kayıt yok.</p>}
-                    {aiHistory.map((item) => (
-                      <button key={item.id || `${item.content_type}-${item.topic}`} onClick={() => { setAiType(item.content_type); setAiTopic(item.topic); setAiResult(item.output); }} type="button">
-                        Yeniden kullan: {item.content_type}
-                      </button>
-                    ))}
-                  </div>
-                </article>
-              </section>
-            )}
-
-            {activeView === "receipt" && (
-              <section className="view-grid receipt-view">
-                <article className="panel receipt-form">
-                  <h2>Servis fişi oluştur</h2>
-                  <label>Servis kaydı<select value={selectedServiceId} onChange={(event) => setSelectedServiceId(event.target.value)}>{data.services.map((service) => <option value={service.id} key={service.id}>{service.service_type} - {service.problem_summary}</option>)}</select></label>
-                  <button className="primary-action" onClick={downloadPdf} type="button">Profesyonel PDF indir</button>
-                  {pdfStatus && <p className="status-message">{pdfStatus}</p>}
-                </article>
-                <article className="receipt-paper" aria-label="Profesyonel servis fişi">
-                  <div className="receipt-head"><span className="receipt-logo">DB</span><div><strong>{businessName}</strong><p>Denizli ve Pamukkale servis yönetimi</p></div><QRCode /></div>
-                  <div className="receipt-meta"><span>Fiş No: {selectedService?.id?.slice(0, 8) || "Bekliyor"}</span><span>Tarih: {new Date().toLocaleDateString("tr-TR")}</span><span>Telefon: {phoneDisplay}</span></div>
-                  <div className="receipt-lines">
-                    <p><strong>Müşteri:</strong> {selectedCustomer?.full_name || "Seçilmedi"}</p>
-                    <p><strong>Cihaz:</strong> {selectedDevice ? `${selectedDevice.brand} ${selectedDevice.device_type}` : "Seçilmedi"}</p>
-                    <p><strong>Arıza:</strong> {selectedService?.problem_summary || "Seçilmedi"}</p>
-                    <p><strong>Yapılan işlem:</strong> {selectedService?.operation_summary || selectedService?.technician_notes || "İşlem girilmedi"}</p>
-                    <p><strong>Garanti:</strong> {selectedService?.warranty_until || "Garanti tarihi girilmedi"}</p>
-                  </div>
-                  <div className="signature-row"><span>Müşteri imzası</span><span>Teknisyen imzası</span></div>
-                </article>
-              </section>
-            )}
-
-            {activeView === "calendar" && (
-              <section className="view-grid calendar-view">
-                <article className="panel wide">
-                  <form className="form-grid" onSubmit={submitAppointment}>
-                    <label>Servis kaydı<select value={appointmentForm.service_record_id} onChange={(event) => setAppointmentForm({ ...appointmentForm, service_record_id: event.target.value })}><option value="">Seçin</option>{data.services.map((service) => <option value={service.id} key={service.id}>{service.service_type} - {service.problem_summary}</option>)}</select></label>
-                    <label>Teknisyen<input value={appointmentForm.technician_name} onChange={(event) => setAppointmentForm({ ...appointmentForm, technician_name: event.target.value })} /></label>
-                    <label>Tarih ve saat<input type="datetime-local" value={appointmentForm.appointment_at} onChange={(event) => setAppointmentForm({ ...appointmentForm, appointment_at: event.target.value })} /></label>
-                    <label>Durum<select value={appointmentForm.status} onChange={(event) => setAppointmentForm({ ...appointmentForm, status: event.target.value })}><option value="scheduled">Planlandı</option><option value="completed">Tamamlandı</option></select></label>
-                    <button className="primary-action" type="submit">Randevu kaydet</button>
+                </Crud>
+              )}
+              {view === "requests" && (
+                <Crud title="Talepler" items={data.requests.map((item) => `${item.subject} - ${item.status}`)}>
+                  <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("request", requestForm, "Talep kaydedildi."); }}>
+                    <SelectCustomer customers={data.customers} value={requestForm.customer_id} onChange={(value) => setRequestForm({ ...requestForm, customer_id: value })} />
+                    <input placeholder="Konu" value={requestForm.subject} onChange={(e) => setRequestForm({ ...requestForm, subject: e.target.value })} />
+                    <input placeholder="Açıklama" value={requestForm.description} onChange={(e) => setRequestForm({ ...requestForm, description: e.target.value })} />
+                    <button type="submit">Talep oluştur</button>
                   </form>
-                </article>
-                {dayNames.map((day) => (
-                  <article className="day-column" key={day} onDragOver={(event) => event.preventDefault()} onDrop={() => void moveAppointment(day)}>
-                    <h2>{day}</h2>
-                    {data.appointments.filter((item) => dayName(item.appointment_at) === day).map((item) => {
-                      const service = data.services.find((row) => row.id === item.service_record_id);
-                      return (
-                        <div className="appointment" draggable key={item.id} onDragStart={() => setDraggedId(item.id)}>
-                          <strong>{new Date(item.appointment_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</strong>
-                          <span>{service?.service_type || "Servis"} - {service?.problem_summary || "Randevu"}</span>
-                          <em>{item.technician_name || "Teknisyen atanmadı"}</em>
-                        </div>
-                      );
-                    })}
-                  </article>
-                ))}
-              </section>
-            )}
-
-            {activeView === "notifications" && (
-              <section className="view-grid notification-view">
-                <article className="panel wide">
-                  <div className="panel-head"><h2>Bildirim merkezi</h2><button onClick={() => setNotifications((items) => [`Veriler yenilendi: ${new Date().toLocaleTimeString("tr-TR")}`, ...items])} type="button">Yeni servis bildirimi simüle et</button></div>
-                  {notifications.length === 0 && <p>Yeni işlem olduğunda bildirimler burada görünür.</p>}
-                  {notifications.map((notification, index) => <div className="notification" key={`${notification}-${index}`}><span>{index === 0 ? "Yeni" : "Okundu"}</span><strong>{notification}</strong></div>)}
-                </article>
-              </section>
-            )}
-
-            {activeView === "website" && (
-              <section className="view-grid website-view">
-                <article className="public-hero wide">
-                  <span>Profesyonel müşteri web sitesi</span>
-                  <h2>Denizli ve Pamukkale için hızlı beyaz eşya ve klima servisi</h2>
-                  <p>WhatsApp talep formu, arama butonu ve servis kayıtları Supabase veritabanına bağlı çalışır.</p>
-                  <div><a className="primary-action" href={`tel:${phoneTel}`}>{phoneDisplay} ara</a><a className="secondary-action" href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp servis talebi</a></div>
-                </article>
-                <ServiceRequestForm formStatus={formStatus} serviceForm={serviceForm} setServiceForm={setServiceForm} submitServiceRequest={submitServiceRequest} whatsappUrl={whatsappUrl} />
-              </section>
-            )}
+                </Crud>
+              )}
+              {view === "appointments" && (
+                <Crud title="Randevular" items={data.appointments.map((item) => `${new Date(item.appointment_at).toLocaleString("tr-TR")} - ${item.status}`)}>
+                  <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("appointment", appointmentForm, "Randevu kaydedildi."); }}>
+                    <SelectCustomer customers={data.customers} value={appointmentForm.customer_id} onChange={(value) => setAppointmentForm({ ...appointmentForm, customer_id: value })} />
+                    <select value={appointmentForm.job_id} onChange={(e) => setAppointmentForm({ ...appointmentForm, job_id: e.target.value })}><option value="">İş seçin</option>{data.jobs.map((job) => <option value={job.id} key={job.id}>{job.title}</option>)}</select>
+                    <input type="datetime-local" value={appointmentForm.appointment_at} onChange={(e) => setAppointmentForm({ ...appointmentForm, appointment_at: e.target.value })} />
+                    <input placeholder="Not" value={appointmentForm.note} onChange={(e) => setAppointmentForm({ ...appointmentForm, note: e.target.value })} />
+                    <button type="submit">Randevu oluştur</button>
+                  </form>
+                </Crud>
+              )}
+              {view === "jobs" && (
+                <Crud title="İş / servis kayıtları" items={data.jobs.map((item) => `${item.title} - ${item.status} - ${currency(Number(item.price || 0))}`)}>
+                  <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("job", jobForm, "İş kaydı oluşturuldu."); }}>
+                    <SelectCustomer customers={data.customers} value={jobForm.customer_id} onChange={(value) => setJobForm({ ...jobForm, customer_id: value })} />
+                    <input placeholder="İş başlığı" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} />
+                    <input placeholder="Açıklama" value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} />
+                    <input placeholder="Ücret" value={jobForm.price} onChange={(e) => setJobForm({ ...jobForm, price: e.target.value })} />
+                    <button type="submit">İş kaydı oluştur</button>
+                  </form>
+                </Crud>
+              )}
+              {view === "ai" && (
+                <Crud title="AI içerik üretim merkezi" items={data.content.map((item) => `${item.content_type}: ${item.topic}`)}>
+                  <form className="ai-form" onSubmit={generateAi}>
+                    <select value={aiForm.type} onChange={(e) => setAiForm({ ...aiForm, type: e.target.value })}>{aiTypes.map((type) => <option key={type}>{type}</option>)}</select>
+                    <textarea value={aiForm.topic} onChange={(e) => setAiForm({ ...aiForm, topic: e.target.value })} />
+                    <button disabled={loading} type="submit">AI içerik üret</button>
+                  </form>
+                  <output>{aiResult || "Üretilen içerik burada görünür."}</output>
+                </Crud>
+              )}
+              {view === "templates" && (
+                <Crud title="WhatsApp mesaj şablonları" items={data.templates.map((item) => `${item.channel}: ${item.body}`)}>
+                  <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("template", templateForm, "Şablon kaydedildi."); }}>
+                    <input value={templateForm.channel} onChange={(e) => setTemplateForm({ ...templateForm, channel: e.target.value })} />
+                    <input value={templateForm.title} onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })} />
+                    <input value={templateForm.body} onChange={(e) => setTemplateForm({ ...templateForm, body: e.target.value })} />
+                    <button type="submit">Şablon kaydet</button>
+                  </form>
+                </Crud>
+              )}
+              {view === "pdf" && <Crud title="PDF rapor oluşturma" items={["Müşteri ve iş kaydı varsa PDF indirilebilir."]}><button onClick={downloadPdf} type="button">PDF indir</button></Crud>}
+              {view === "settings" && <List title="Firma ayarları ve demo/referans" items={[demoCompany, phoneDisplay, "Multi-tenant company_id altyapısı hazır", "Vercel standart .next build hazır"]} />}
+            </section>
           </section>
-          <FloatingActions whatsappUrl={whatsappUrl} />
-        </>
-      ) : null}
+        )}
+        {status && <p className="status">{status}</p>}
+      </section>
     </main>
   );
 }
 
-function FloatingActions({ whatsappUrl }: { whatsappUrl: string }) {
-  return (
-    <div className="floating-actions" aria-label="Hızlı iletişim">
-      <a href={`tel:${phoneTel}`}>Ara</a>
-      <a href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp</a>
-    </div>
-  );
+function SelectCustomer({ customers, value, onChange }: { customers: Customer[]; value: string; onChange: (value: string) => void }) {
+  return <select value={value} onChange={(e) => onChange(e.target.value)}><option value="">Müşteri seçin</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.full_name}</option>)}</select>;
 }
 
-function ServiceRequestForm({
-  formStatus,
-  serviceForm,
-  setServiceForm,
-  submitServiceRequest,
-  whatsappUrl,
-}: {
-  formStatus: string;
-  serviceForm: {
-    fullName: string;
-    phone: string;
-    device: string;
-    brand: string;
-    fault: string;
-    district: string;
-    neighborhood: string;
-    description: string;
-  };
-  setServiceForm: (value: {
-    fullName: string;
-    phone: string;
-    device: string;
-    brand: string;
-    fault: string;
-    district: string;
-    neighborhood: string;
-    description: string;
-  }) => void;
-  submitServiceRequest: (event: FormEvent) => void;
-  whatsappUrl: string;
-}) {
-  return (
-    <form className="panel wide public-form" onSubmit={submitServiceRequest}>
-      <h2>Gerçek servis talep formu</h2>
-      <div className="form-grid">
-        <label>Ad Soyad<input required minLength={3} value={serviceForm.fullName} onChange={(event) => setServiceForm({ ...serviceForm, fullName: event.target.value })} /></label>
-        <label>Telefon<input required pattern="0?5[0-9]{9}" value={serviceForm.phone} onChange={(event) => setServiceForm({ ...serviceForm, phone: event.target.value })} /></label>
-        <label>Cihaz<input required value={serviceForm.device} onChange={(event) => setServiceForm({ ...serviceForm, device: event.target.value })} /></label>
-        <label>Marka<input required value={serviceForm.brand} onChange={(event) => setServiceForm({ ...serviceForm, brand: event.target.value })} /></label>
-        <label>Arıza<input required minLength={4} value={serviceForm.fault} onChange={(event) => setServiceForm({ ...serviceForm, fault: event.target.value })} /></label>
-        <label>İlçe<input required value={serviceForm.district} onChange={(event) => setServiceForm({ ...serviceForm, district: event.target.value })} /></label>
-        <label>Mahalle<input required value={serviceForm.neighborhood} onChange={(event) => setServiceForm({ ...serviceForm, neighborhood: event.target.value })} /></label>
-      </div>
-      <label>Açıklama<textarea required minLength={8} value={serviceForm.description} onChange={(event) => setServiceForm({ ...serviceForm, description: event.target.value })} rows={4} /></label>
-      <button className="primary-action" type="submit">Talebi Supabase&apos;e kaydet</button>
-      <a className="secondary-action" href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp mesajı oluştur</a>
-      {formStatus && <p className="status-message">{formStatus}</p>}
-    </form>
-  );
+function Crud({ title, items, children }: { title: string; items: string[]; children: React.ReactNode }) {
+  return <section className="card"><h2>{title}</h2>{children}<List title="Kayıtlar" items={items} /></section>;
+}
+
+function List({ title, items }: { title: string; items: string[] }) {
+  return <section className="list"><h3>{title}</h3>{items.length === 0 ? <p>Kayıt yok.</p> : items.map((item) => <p key={item}>{item}</p>)}</section>;
 }

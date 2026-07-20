@@ -1,14 +1,23 @@
-import { supabaseRequest } from "./supabase";
+import { selectRows } from "./supabase";
 
-const cookieName = "dbes_session";
+const cookieName = "business_ai_session";
 const encoder = new TextEncoder();
 
-type AdminRow = {
-  id: string;
+export type AdminSession = {
+  sub: string;
   email: string;
-  role: string;
+  role: "admin" | "staff";
+  companyId: string;
+  exp: number;
+};
+
+type UserRow = {
+  id: string;
+  company_id: string;
+  email: string;
+  role: "admin" | "staff";
   password_hash: string;
-  is_demo: boolean;
+  is_active: boolean;
 };
 
 function base64Url(bytes: ArrayBuffer | Uint8Array) {
@@ -24,7 +33,7 @@ function fromBase64(value: string) {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 }
 
-async function hmac(message: string) {
+async function sign(message: string) {
   const secret = process.env.AUTH_SECRET;
   if (!secret || secret.length < 32) {
     throw new Error("AUTH_SECRET en az 32 karakter olmalıdır.");
@@ -35,26 +44,27 @@ async function hmac(message: string) {
     encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign", "verify"]
+    ["sign"]
   );
   return base64Url(await crypto.subtle.sign("HMAC", key, encoder.encode(message)));
 }
 
-export async function createSession(admin: Pick<AdminRow, "id" | "email" | "role">) {
+export async function createSession(user: Pick<UserRow, "id" | "company_id" | "email" | "role">) {
   const payload = base64Url(
     encoder.encode(
       JSON.stringify({
-        sub: admin.id,
-        email: admin.email,
-        role: admin.role,
+        sub: user.id,
+        companyId: user.company_id,
+        email: user.email,
+        role: user.role,
         exp: Date.now() + 1000 * 60 * 60 * 8,
       })
     )
   );
-  return `${payload}.${await hmac(payload)}`;
+  return `${payload}.${await sign(payload)}`;
 }
 
-export async function verifySession(request: Request) {
+export async function verifySession(request: Request): Promise<AdminSession | null> {
   const cookie = request.headers
     .get("cookie")
     ?.split(";")
@@ -64,23 +74,26 @@ export async function verifySession(request: Request) {
 
   if (!cookie) return null;
   const [payload, signature] = cookie.split(".");
-  if (!payload || !signature || signature !== (await hmac(payload))) return null;
+  if (!payload || !signature || signature !== (await sign(payload))) return null;
 
-  const session = JSON.parse(new TextDecoder().decode(fromBase64(payload))) as {
-    sub: string;
-    email: string;
-    role: string;
-    exp: number;
-  };
-
+  const session = JSON.parse(new TextDecoder().decode(fromBase64(payload))) as AdminSession;
   if (session.exp < Date.now()) return null;
   return session;
 }
 
-export async function requireAdmin(request: Request) {
+export async function requireUser(request: Request) {
   const session = await verifySession(request);
-  if (!session || session.role !== "admin") {
+  if (!session) {
     return Response.json({ error: "Yetkisiz erişim. Yönetici girişi gerekli." }, { status: 401 });
+  }
+  return session;
+}
+
+export async function requireAdmin(request: Request) {
+  const session = await requireUser(request);
+  if (session instanceof Response) return session;
+  if (session.role !== "admin") {
+    return Response.json({ error: "Bu işlem için admin yetkisi gerekli." }, { status: 403 });
   }
   return session;
 }
@@ -93,10 +106,9 @@ export function clearSessionCookie() {
   return `${cookieName}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
 }
 
-export async function findAdminByEmail(email: string) {
-  const rows = await supabaseRequest<AdminRow[]>(
-    `admins?email=eq.${encodeURIComponent(email.toLowerCase())}&select=id,email,role,password_hash,is_demo&limit=1`,
-    { method: "GET" }
+export async function findUserByEmail(email: string) {
+  const rows = await selectRows<UserRow>(
+    `staff_users?email=eq.${encodeURIComponent(email.toLowerCase())}&is_active=eq.true&select=id,company_id,email,role,password_hash,is_active&limit=1`
   );
   return rows[0] ?? null;
 }

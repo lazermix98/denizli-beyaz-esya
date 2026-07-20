@@ -1,13 +1,20 @@
-import { requireAdmin } from "../../../lib/auth";
+import { requireUser } from "../../../lib/auth";
 
-export const runtime = "edge";
-
-function line(value: string) {
-  return value.replace(/[()\\]/g, "");
+function safeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ğ/g, "g")
+    .replace(/Ğ/g, "G")
+    .replace(/ı/g, "i")
+    .replace(/İ/g, "I")
+    .replace(/ş/g, "s")
+    .replace(/Ş/g, "S")
+    .replace(/[()\\]/g, "");
 }
 
-function buildPdf(lines: string[]) {
-  const body = lines.map((item, index) => `BT /F1 11 Tf 48 ${760 - index * 24} Td (${line(item)}) Tj ET`).join("\n");
+function pdf(lines: string[]) {
+  const body = lines.map((line, index) => `BT /F1 11 Tf 48 ${780 - index * 24} Td (${safeText(line)}) Tj ET`).join("\n");
   const objects = [
     "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
     "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
@@ -15,50 +22,49 @@ function buildPdf(lines: string[]) {
     "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
     `5 0 obj << /Length ${body.length} >> stream\n${body}\nendstream endobj`,
   ];
-  let pdf = "%PDF-1.4\n";
+  let output = "%PDF-1.4\n";
   const offsets = [0];
   for (const object of objects) {
-    offsets.push(pdf.length);
-    pdf += `${object}\n`;
+    offsets.push(output.length);
+    output += `${object}\n`;
   }
-  const xref = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  const xref = output.length;
+  output += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
   offsets.slice(1).forEach((offset) => {
-    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+    output += `${String(offset).padStart(10, "0")} 00000 n \n`;
   });
-  pdf += `trailer << /Root 1 0 R /Size ${objects.length + 1} >>\nstartxref\n${xref}\n%%EOF`;
-  return pdf;
+  output += `trailer << /Root 1 0 R /Size ${objects.length + 1} >>\nstartxref\n${xref}\n%%EOF`;
+  return output;
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin(request);
-  if (auth instanceof Response) return auth;
+  const session = await requireUser(request);
+  if (session instanceof Response) return session;
 
   const payload = (await request.json()) as Record<string, string>;
-  const required = ["customer", "device", "fault", "operation", "part", "price", "warranty"];
+  const required = ["customer", "title", "description", "price", "warranty"];
   const missing = required.filter((field) => !payload[field]?.trim());
   if (missing.length > 0) {
     return Response.json({ error: "PDF için eksik alan var.", missing }, { status: 400 });
   }
 
-  const pdf = buildPdf([
-    "Denizli Beyaz Esya Servisi",
+  const content = pdf([
+    "Isletme AI Otomasyon - Is / Servis Formu",
+    "Demo firma: Denizli Beyaz Esya Servisi",
     "Telefon: 0532 639 78 98",
     `Musteri: ${payload.customer}`,
-    `Cihaz: ${payload.device}`,
-    `Ariza: ${payload.fault}`,
-    `Islem: ${payload.operation}`,
-    `Parca: ${payload.part}`,
+    `Is / Servis: ${payload.title}`,
+    `Aciklama: ${payload.description}`,
     `Ucret: ${payload.price}`,
     `Garanti: ${payload.warranty}`,
     "Musteri imzasi: ____________________",
-    "Teknisyen imzasi: __________________",
+    "Yetkili imzasi: _____________________",
   ]);
 
-  return new Response(pdf, {
+  return new Response(content, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": 'attachment; filename="denizli-beyaz-esya-servis-fisi.pdf"',
+      "Content-Disposition": 'attachment; filename="isletme-ai-servis-formu.pdf"',
     },
   });
 }
