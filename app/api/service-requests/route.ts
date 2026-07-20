@@ -15,6 +15,22 @@ type ServiceRequest = {
   description?: string;
 };
 
+type CustomerRow = {
+  id: string;
+  full_name: string;
+  phone: string;
+  district: string;
+  neighborhood?: string;
+};
+
+type DeviceRow = {
+  id: string;
+  customer_id: string;
+  device_type: string;
+  brand: string;
+  notes?: string;
+};
+
 function validate(input: ServiceRequest) {
   const errors: Record<string, string> = {};
   if (!input.fullName || input.fullName.trim().length < 3) errors.fullName = "Ad soyad en az 3 karakter olmalı.";
@@ -41,28 +57,37 @@ export async function POST(request: Request) {
     return Response.json({ error: "Form doğrulaması başarısız.", errors }, { status: 400 });
   }
 
+  const fullName = input.fullName!.trim();
+  const phone = input.phone!.trim();
+  const deviceType = input.device!.trim();
+  const brand = input.brand!.trim();
+  const fault = input.fault!.trim();
+  const district = input.district!.trim();
+  const neighborhood = input.neighborhood!.trim();
+  const description = input.description!.trim();
+
   try {
-    const customer = await insertOne("customers", {
-      full_name: input.fullName,
-      phone: input.phone,
-      district: input.district,
-      neighborhood: input.neighborhood,
+    const customer = await insertOne<CustomerRow>("customers", {
+      full_name: fullName,
+      phone,
+      district,
+      neighborhood,
     });
 
-    const device = await insertOne("devices", {
+    const device = await insertOne<DeviceRow>("devices", {
       customer_id: customer.id,
-      device_type: input.device,
-      brand: input.brand,
-      notes: input.description,
+      device_type: deviceType,
+      brand,
+      notes: description,
     });
 
     const service = await insertOne("service_records", {
       customer_id: customer.id,
       device_id: device.id,
-      service_type: input.device,
-      problem_summary: input.fault,
+      service_type: deviceType,
+      problem_summary: fault,
       status: "new",
-      technician_notes: input.description,
+      technician_notes: description,
     });
 
     recentSubmissions.set(ip, Date.now());

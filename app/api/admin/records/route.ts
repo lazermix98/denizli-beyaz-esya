@@ -82,10 +82,16 @@ function buildPayload(kind: RecordKind, input: Record<string, unknown>) {
   return compact(payload);
 }
 
-async function parse(request: Request) {
+type ParsedBody = {
+  kind: RecordKind;
+  id?: string;
+  data?: Record<string, unknown>;
+};
+
+async function parse(request: Request): Promise<ParsedBody> {
   const body = (await request.json()) as { kind?: RecordKind; id?: string; data?: Record<string, unknown> };
   if (!body.kind || !tableByKind[body.kind]) throw new Error("Geçersiz kayıt türü.");
-  return body;
+  return { kind: body.kind, id: body.id, data: body.data };
 }
 
 export async function POST(request: Request) {

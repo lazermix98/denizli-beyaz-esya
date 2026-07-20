@@ -82,7 +82,7 @@ export async function supabaseRequest<T>(
   return (await response.json()) as T;
 }
 
-export async function insertOne<T extends DbRecord>(table: string, payload: T) {
+export async function insertOne<T extends DbRecord = DbRecord>(table: string, payload: DbRecord) {
   const rows = await supabaseRequest<T[]>(table, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -95,7 +95,7 @@ export async function selectRows<T>(tableAndQuery: string) {
 }
 
 export async function insertAdminRow<T extends DbRecord>(table: string, payload: T) {
-  return insertOne(table, payload);
+  return insertOne<T>(table, payload);
 }
 
 export async function updateAdminRow<T extends DbRecord>(table: string, id: string, payload: T) {

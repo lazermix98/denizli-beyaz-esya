@@ -69,7 +69,16 @@ Komutun ürettiği SQL çıktısını Supabase SQL Editor içinde çalıştırı
 
 ## Hosting ve Yayın
 
-Önerilen hosting: OpenAI Sites veya Cloudflare Workers uyumlu vinext dağıtımı.
+Önerilen hosting: Vercel.
+
+Vercel ayarları:
+
+- Framework Preset: `Next.js`
+- Build Command: `npm run build`
+- Output Directory: boş bırakılmalı
+- Install Command: varsayılan `npm install` veya `npm ci`
+
+`package.json` içindeki production build komutu `next build` çalıştırır ve Vercel'in beklediği `.next` klasörünü üretir.
 
 Beklenen URL'ler:
 

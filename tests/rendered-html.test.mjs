@@ -4,38 +4,18 @@ import test from "node:test";
 
 const templateRoot = new URL("../", import.meta.url);
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+test("keeps Vercel build configuration aligned with Next.js", async () => {
+  const [packageJson, nextConfig] = await Promise.all([
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+  ]);
 
-  return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    }
-  );
-}
-
-test("server-renders the protected production entry", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-
-  const html = await response.text();
-  assert.match(html, /<html lang="tr">/i);
-  assert.match(html, /Denizli Beyaz Eşya Servisi/);
-  assert.match(html, /paneli hazırlanıyor/);
-  assert.doesNotMatch(html, /Günlük servis|Aylık ciro|Bekleyen servis/);
-  assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
+  const pkg = JSON.parse(packageJson);
+  assert.equal(pkg.scripts.build, "next build");
+  assert.equal(pkg.scripts.dev, "next dev");
+  assert.equal(pkg.scripts.start, "next start");
+  assert.doesNotMatch(nextConfig, /distDir\s*:/);
+  await assert.rejects(access(new URL("../vercel.json", import.meta.url)));
 });
 
 test("keeps source aligned with real Supabase CRUD", async () => {
@@ -69,6 +49,7 @@ test("keeps source aligned with real Supabase CRUD", async () => {
   assert.match(supabase, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
   assert.match(readme, /Supabase Bağlantısı/);
   assert.match(layout, /Denizli Beyaz Eşya Servisi/);
+  assert.doesNotMatch(packageJson, /"build":\s*"vinext build"/);
   assert.doesNotMatch(page, /localStorage|const customers = \[|initialAppointments|SkeletonPreview|codex-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 
