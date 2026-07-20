@@ -154,3 +154,7 @@ Admin ekranları tek büyük veri endpointi kullanmaz. Her route yalnızca kendi
 - `/api/admin/pdf-data`
 
 Liste endpointleri sınırlı kolon seçer, `select=*` kullanmaz ve ilk sayfa için `limit` uygular. Dashboard tüm tabloları çekmek yerine sayım ve kısa özet verileriyle çalışır.
+
+## V1 Pagination Standardı
+
+Liste ekranları ortak `Pagination` bileşenini kullanır. Desteklenen sayfa boyutları `10`, `25`, `50`, `100` değerleridir. URL `?page=3&perPage=25` formatını korur; sayfa yenileme ve browser back/forward aynı liste konumunu açar. Mobilde pagination kontrolleri satır kırar ve yatay taşma yapmaz.

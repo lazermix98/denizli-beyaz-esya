@@ -8,7 +8,14 @@ export function AiContentPanel({ controller }: { controller: AdminController }) 
   const { data, aiForm, setAiForm, generateAi, aiResult, loading } = controller;
 
   return (
-    <CrudCard title="AI içerik üretim merkezi" items={data.content.map((item) => `${item.content_type}: ${item.topic}`)}>
+    <CrudCard
+      title="AI içerik üretim merkezi"
+      items={data.content.map((item) => `${item.content_type}: ${item.topic}`)}
+      loading={controller.routeLoading}
+      pagination={controller.pagination}
+      onPageChange={controller.changePage}
+      onPerPageChange={controller.changePerPage}
+    >
       <form className="ai-form" onSubmit={generateAi}>
         <select value={aiForm.type} onChange={(e) => setAiForm({ ...aiForm, type: e.target.value })}>
           {aiTypes.map((type) => <option key={type}>{type}</option>)}

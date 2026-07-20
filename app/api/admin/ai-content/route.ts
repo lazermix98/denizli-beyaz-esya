@@ -1,5 +1,6 @@
 import { requireUser } from "../../../lib/auth";
 import { selectRows } from "../../../lib/supabase";
+import { pagedQuery } from "../_utils/pagination";
 
 export const revalidate = 30;
 
@@ -8,8 +9,11 @@ export async function GET(request: Request) {
   if (session instanceof Response) return session;
 
   const company = encodeURIComponent(session.companyId);
-  const content = await selectRows(
-    `ai_contents?company_id=eq.${company}&select=id,content_type,topic,output,created_at&order=created_at.desc&limit=25`
+  const { pagePath, pagination } = await pagedQuery(
+    `ai_contents?company_id=eq.${company}&select=id,content_type,topic,output,created_at&order=created_at.desc`,
+    `ai_contents?company_id=eq.${company}&select=id`,
+    request
   );
-  return Response.json({ content }, { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } });
+  const content = await selectRows(pagePath);
+  return Response.json({ content, pagination }, { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } });
 }

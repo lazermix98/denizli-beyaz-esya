@@ -9,7 +9,14 @@ export function WorkRecordsPanel({ controller }: { controller: AdminController }
   const { data, jobForm, setJobForm, createRecord } = controller;
 
   return (
-    <CrudCard title="İş / servis kayıtları" items={data.jobs.map((item) => `${item.title} - ${item.status} - ${currency(Number(item.price || 0))}`)}>
+    <CrudCard
+      title="İş / servis kayıtları"
+      items={data.jobs.map((item) => `${item.title} - ${item.status} - ${currency(Number(item.price || 0))}`)}
+      loading={controller.routeLoading}
+      pagination={controller.pagination}
+      onPageChange={controller.changePage}
+      onPerPageChange={controller.changePerPage}
+    >
       <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("job", jobForm, "İş kaydı oluşturuldu."); }}>
         <SelectCustomer customers={data.customers} value={jobForm.customer_id} onChange={(value) => setJobForm({ ...jobForm, customer_id: value })} />
         <input placeholder="İş başlığı" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} />

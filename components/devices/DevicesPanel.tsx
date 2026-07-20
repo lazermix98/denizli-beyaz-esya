@@ -8,7 +8,14 @@ export function DevicesPanel({ controller }: { controller: AdminController }) {
   const { data, deviceForm, setDeviceForm, createRecord } = controller;
 
   return (
-    <CrudCard title="Cihaz yönetimi" items={data.devices.map((item) => `${item.device_type} - ${item.brand || "Marka yok"} ${item.model || ""}`)}>
+    <CrudCard
+      title="Cihaz yönetimi"
+      items={data.devices.map((item) => `${item.device_type} - ${item.brand || "Marka yok"} ${item.model || ""}`)}
+      loading={controller.routeLoading}
+      pagination={controller.pagination}
+      onPageChange={controller.changePage}
+      onPerPageChange={controller.changePerPage}
+    >
       <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("device", deviceForm, "Cihaz kaydedildi."); }}>
         <SelectCustomer customers={data.customers} value={deviceForm.customer_id} onChange={(value) => setDeviceForm({ ...deviceForm, customer_id: value })} />
         <input placeholder="Cihaz türü" value={deviceForm.device_type} onChange={(e) => setDeviceForm({ ...deviceForm, device_type: e.target.value })} />

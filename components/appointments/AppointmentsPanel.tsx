@@ -8,7 +8,14 @@ export function AppointmentsPanel({ controller }: { controller: AdminController 
   const { data, appointmentForm, setAppointmentForm, createRecord } = controller;
 
   return (
-    <CrudCard title="Randevular" items={data.appointments.map((item) => `${new Date(item.appointment_at).toLocaleString("tr-TR")} - ${item.status}`)}>
+    <CrudCard
+      title="Randevular"
+      items={data.appointments.map((item) => `${new Date(item.appointment_at).toLocaleString("tr-TR")} - ${item.status}`)}
+      loading={controller.routeLoading}
+      pagination={controller.pagination}
+      onPageChange={controller.changePage}
+      onPerPageChange={controller.changePerPage}
+    >
       <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("appointment", appointmentForm, "Randevu kaydedildi."); }}>
         <SelectCustomer customers={data.customers} value={appointmentForm.customer_id} onChange={(value) => setAppointmentForm({ ...appointmentForm, customer_id: value })} />
         <select value={appointmentForm.job_id} onChange={(e) => setAppointmentForm({ ...appointmentForm, job_id: e.target.value })}>

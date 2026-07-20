@@ -7,7 +7,14 @@ export function WhatsAppTemplatesPanel({ controller }: { controller: AdminContro
   const { data, templateForm, setTemplateForm, createRecord } = controller;
 
   return (
-    <CrudCard title="WhatsApp mesaj şablonları" items={data.templates.map((item) => `${item.channel}: ${item.body}`)}>
+    <CrudCard
+      title="WhatsApp mesaj şablonları"
+      items={data.templates.map((item) => `${item.channel}: ${item.body}`)}
+      loading={controller.routeLoading}
+      pagination={controller.pagination}
+      onPageChange={controller.changePage}
+      onPerPageChange={controller.changePerPage}
+    >
       <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("template", templateForm, "Şablon kaydedildi."); }}>
         <input value={templateForm.channel} onChange={(e) => setTemplateForm({ ...templateForm, channel: e.target.value })} />
         <input value={templateForm.title} onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })} />

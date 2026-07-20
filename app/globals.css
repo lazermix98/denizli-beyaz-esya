@@ -368,6 +368,79 @@ label {
   color: var(--muted);
 }
 
+.empty-state {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.skeleton-list {
+  display: grid;
+  gap: 10px;
+}
+
+.skeleton-list span {
+  height: 42px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--panel-2), rgba(22, 163, 74, .12), var(--panel-2));
+  background-size: 220% 100%;
+  animation: shimmer 1.1s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  to { background-position: -220% 0; }
+}
+
+.pagination {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.pagination-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pagination-controls button,
+.page-size select {
+  min-height: 38px;
+}
+
+.pagination-controls button {
+  background: var(--navy);
+  padding: 0 12px;
+}
+
+.pagination-controls button.active {
+  background: var(--green);
+}
+
+.pagination-controls button:disabled {
+  opacity: .45;
+}
+
+.page-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-size {
+  max-width: 220px;
+}
+
 .ai-form {
   display: grid;
   gap: 12px;

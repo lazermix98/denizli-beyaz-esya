@@ -8,7 +8,14 @@ export function CustomersPanel({ controller }: { controller: AdminController }) 
   const { data, customerForm, setCustomerForm, deviceForm, setDeviceForm, createRecord } = controller;
 
   return (
-    <CrudCard title="Müşteriler" items={data.customers.map((item) => `${item.full_name} - ${item.phone}`)}>
+    <CrudCard
+      title="Müşteriler"
+      items={data.customers.map((item) => `${item.full_name} - ${item.phone}`)}
+      loading={controller.routeLoading}
+      pagination={controller.pagination}
+      onPageChange={controller.changePage}
+      onPerPageChange={controller.changePerPage}
+    >
       <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("customer", customerForm, "Müşteri kaydedildi."); }}>
         <input placeholder="Ad soyad" value={customerForm.full_name} onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })} />
         <input placeholder="Telefon" value={customerForm.phone} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} />

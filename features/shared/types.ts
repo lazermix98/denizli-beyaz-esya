@@ -37,6 +37,15 @@ export type DashboardSummary = {
   revenue: number;
 };
 
+export type PaginationMeta = {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+  from: number;
+  to: number;
+};
+
 export const emptyData: AdminData = {
   customers: [],
   requests: [],

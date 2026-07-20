@@ -203,8 +203,10 @@ test("creates stable admin routes", async () => {
 
 test("loads admin data per route without the legacy bulk endpoint", async () => {
   await assert.rejects(access(new URL("../app/api/admin/data/route.ts", import.meta.url)));
-  const [controller, summary, customers, requests, appointments, devices, jobs, ai, templates] = await Promise.all([
+  const [controller, paginationHelper, paginationComponent, summary, customers, requests, appointments, devices, jobs, ai, templates] = await Promise.all([
     readFile(new URL("../features/admin/hooks/useAdminController.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/_utils/pagination.ts", import.meta.url), "utf8"),
+    readFile(new URL("../components/shared/Pagination.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/summary/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/customers/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/requests/route.ts", import.meta.url), "utf8"),
@@ -216,10 +218,23 @@ test("loads admin data per route without the legacy bulk endpoint", async () => 
   ]);
   assert.match(controller, /endpointBySection/);
   assert.doesNotMatch(controller, /\/api\/admin\/data/);
+  assert.match(controller, /window\.history\.pushState/);
+  assert.match(controller, /popstate/);
+  assert.match(controller, /searchParams\.set\("page"/);
+  assert.match(controller, /searchParams\.set\("perPage"/);
+  assert.match(paginationHelper, /allowedPageSizes = \[10, 25, 50, 100\]/);
+  assert.match(paginationHelper, /totalPages/);
+  assert.match(paginationHelper, /offset/);
+  assert.match(paginationComponent, /Önceki/);
+  assert.match(paginationComponent, /Sonraki/);
+  assert.match(paginationComponent, /İlk/);
+  assert.match(paginationComponent, /Son/);
+  assert.match(paginationComponent, /aria-label="Sayfalama"/);
   assert.match(summary, /supabaseCount/);
   assert.doesNotMatch(summary, /select=\*/);
   for (const source of [customers, requests, appointments, devices, jobs, ai, templates]) {
-    assert.match(source, /limit=25|limit=100/);
+    assert.match(source, /pagedQuery/);
+    assert.match(source, /pagination/);
     assert.doesNotMatch(source, /select=\*/);
   }
 });

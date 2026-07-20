@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { aiTypes } from "../../ai-content/constants";
 import { companySettings } from "../../settings/company";
-import type { AdminData, AdminSection, DashboardSummary, SetupStatus } from "../../shared/types";
+import type { AdminData, AdminSection, DashboardSummary, PaginationMeta, SetupStatus } from "../../shared/types";
 import { emptyData } from "../../shared/types";
 import { currency, localDateTime, postJson } from "../../shared/utils";
 
@@ -20,6 +20,19 @@ const endpointBySection: Record<AdminSection, string> = {
   settings: "/api/auth/session",
 };
 
+const paginatedSections = new Set<AdminSection>(["customers", "requests", "appointments", "work-records", "devices", "ai-content", "whatsapp"]);
+
+function readPageParam() {
+  if (typeof window === "undefined") return 1;
+  return Math.max(1, Number(new URLSearchParams(window.location.search).get("page") || 1) || 1);
+}
+
+function readPerPageParam() {
+  if (typeof window === "undefined") return 25;
+  const value = Number(new URLSearchParams(window.location.search).get("perPage") || 25) || 25;
+  return [10, 25, 50, 100].includes(value) ? value : 25;
+}
+
 export function useAdminController(section: AdminSection) {
   const [dark, setDark] = useState(false);
   const [ready, setReady] = useState(false);
@@ -28,6 +41,9 @@ export function useAdminController(section: AdminSection) {
   const [status, setStatus] = useState("");
   const [data, setData] = useState<AdminData>(emptyData);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [page, setPage] = useState(readPageParam);
+  const [perPage, setPerPage] = useState(readPerPageParam);
   const [login, setLogin] = useState({ email: "", password: "" });
   const [customerForm, setCustomerForm] = useState({ full_name: "", phone: "", district: companySettings.defaultDistrict, neighborhood: "" });
   const [requestForm, setRequestForm] = useState({ customer_id: "", subject: "", description: "", status: "new" });
@@ -50,6 +66,7 @@ export function useAdminController(section: AdminSection) {
   });
   const [aiResult, setAiResult] = useState("");
   const [loading, setLoading] = useState(false);
+  const [routeLoading, setRouteLoading] = useState(false);
 
   const kpis = useMemo(() => {
     if (summary) {
@@ -71,13 +88,24 @@ export function useAdminController(section: AdminSection) {
     ];
   }, [data, summary]);
 
-  const loadData = useCallback(async (target: AdminSection = section) => {
+  const updateUrl = useCallback((nextPage: number, nextPerPage: number) => {
+    if (typeof window === "undefined" || !paginatedSections.has(section)) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", String(nextPage));
+    url.searchParams.set("perPage", String(nextPerPage));
+    window.history.pushState({}, "", url);
+  }, [section]);
+
+  const loadData = useCallback(async (target: AdminSection = section, nextPage = page, nextPerPage = perPage) => {
     setStatus("Veriler yükleniyor...");
+    setRouteLoading(true);
     try {
-      const res = await fetch(endpointBySection[target], { cache: "no-store" });
+      const params = paginatedSections.has(target) ? `?page=${nextPage}&perPage=${nextPerPage}` : "";
+      const res = await fetch(`${endpointBySection[target]}${params}`, { cache: "no-store" });
       const json = (await res.json()) as Partial<AdminData> & {
         error?: string;
         summary?: DashboardSummary;
+        pagination?: PaginationMeta;
         recentRequests?: AdminData["requests"];
         recentContent?: AdminData["content"];
       };
@@ -87,6 +115,7 @@ export function useAdminController(section: AdminSection) {
       }
 
       setSummary(json.summary || null);
+      setPagination(json.pagination || null);
       setData({
         customers: json.customers || [],
         requests: json.requests || json.recentRequests || [],
@@ -99,8 +128,10 @@ export function useAdminController(section: AdminSection) {
       setStatus("Veriler Supabase üzerinden yüklendi.");
     } catch {
       setStatus("Supabase bağlantısı kurulamadı. Environment ayarlarını kontrol edin.");
+    } finally {
+      setRouteLoading(false);
     }
-  }, [section]);
+  }, [page, perPage, section]);
 
   useEffect(() => {
     fetch("/api/setup", { cache: "no-store" })
@@ -122,6 +153,32 @@ export function useAdminController(section: AdminSection) {
       .catch(() => setStatus("Kurulum durumu kontrol edilemedi. Environment ayarlarını kontrol edin."))
       .finally(() => setReady(true));
   }, [loadData, section]);
+
+  useEffect(() => {
+    function onPopState() {
+      const nextPage = readPageParam();
+      const nextPerPage = readPerPageParam();
+      setPage(nextPage);
+      setPerPage(nextPerPage);
+      if (authenticated) void loadData(section, nextPage, nextPerPage);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [authenticated, loadData, section]);
+
+  function changePage(nextPage: number) {
+    const safePage = Math.max(1, Math.min(nextPage, pagination?.totalPages || nextPage));
+    setPage(safePage);
+    updateUrl(safePage, perPage);
+    void loadData(section, safePage, perPage);
+  }
+
+  function changePerPage(nextPerPage: number) {
+    setPerPage(nextPerPage);
+    setPage(1);
+    updateUrl(1, nextPerPage);
+    void loadData(section, 1, nextPerPage);
+  }
 
   async function createRecord(kind: string, form: Record<string, unknown>, success: string) {
     setLoading(true);
@@ -174,6 +231,7 @@ export function useAdminController(section: AdminSection) {
     setAuthenticated(false);
     setData(emptyData);
     setSummary(null);
+    setPagination(null);
     setStatus("Çıkış yapıldı.");
   }
 
@@ -234,6 +292,7 @@ export function useAdminController(section: AdminSection) {
     status,
     data,
     summary,
+    pagination,
     login,
     setLogin,
     customerForm,
@@ -254,8 +313,11 @@ export function useAdminController(section: AdminSection) {
     setSetupForm,
     aiResult,
     loading,
+    routeLoading,
     kpis,
     loadData,
+    changePage,
+    changePerPage,
     createRecord,
     submitLogin,
     submitSetup,
