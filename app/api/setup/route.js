@@ -71,9 +71,8 @@ export async function POST(request) {
       { headers: { "Set-Cookie": sessionCookie(token) } }
     );
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Kurulum tamamlanamadı." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Kurulum tamamlanamadı.";
+    const statusCode = message.includes("zaten tamam") ? 409 : 500;
+    return Response.json({ error: message }, { status: statusCode });
   }
 }

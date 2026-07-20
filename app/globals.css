@@ -71,6 +71,14 @@ label {
   font-weight: 800;
 }
 
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .screen-loader {
   min-height: 100vh;
   display: grid;

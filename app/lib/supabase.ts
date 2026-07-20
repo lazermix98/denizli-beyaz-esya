@@ -77,3 +77,29 @@ export async function deleteRow(table: string, id: string) {
     headers: { Prefer: "return=minimal" },
   });
 }
+
+export async function updateTenantRow<T extends DbRecord = DbRecord>(
+  table: string,
+  id: string,
+  companyId: string,
+  payload: DbRecord
+) {
+  const rows = await supabaseRequest<T[]>(
+    `${table}?id=eq.${encodeURIComponent(id)}&company_id=eq.${encodeURIComponent(companyId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ ...payload, company_id: companyId }),
+    }
+  );
+  return rows[0] ?? null;
+}
+
+export async function deleteTenantRow(table: string, id: string, companyId: string) {
+  await supabaseRequest<null>(
+    `${table}?id=eq.${encodeURIComponent(id)}&company_id=eq.${encodeURIComponent(companyId)}`,
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    }
+  );
+}

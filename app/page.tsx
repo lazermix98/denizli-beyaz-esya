@@ -97,6 +97,7 @@ export default function Home() {
     district: "Pamukkale",
     neighborhood: "",
     description: "",
+    website: "",
   });
   const [customerForm, setCustomerForm] = useState({ full_name: "", phone: "", district: "Pamukkale", neighborhood: "" });
   const [requestForm, setRequestForm] = useState({ customer_id: "", subject: "", description: "", status: "new" });
@@ -206,7 +207,7 @@ export default function Home() {
     try {
       await postJson("/api/service-requests", publicForm);
       setStatus("Talep kaydedildi. Yönetim panelinde görünür.");
-      setPublicForm({ ...publicForm, fullName: "", phone: "", neighborhood: "", description: "" });
+      setPublicForm({ ...publicForm, fullName: "", phone: "", neighborhood: "", description: "", website: "" });
       if (authenticated) await loadData();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Talep kaydedilemedi.");
@@ -377,6 +378,7 @@ export default function Home() {
             <label>Mahalle<input required value={publicForm.neighborhood} onChange={(e) => setPublicForm({ ...publicForm, neighborhood: e.target.value })} /></label>
           </div>
           <label>Açıklama<textarea required minLength={8} rows={4} value={publicForm.description} onChange={(e) => setPublicForm({ ...publicForm, description: e.target.value })} /></label>
+          <label className="honeypot">Website<input tabIndex={-1} autoComplete="off" value={publicForm.website} onChange={(e) => setPublicForm({ ...publicForm, website: e.target.value })} /></label>
           <button disabled={loading} type="submit">{loading ? "Gönderiliyor..." : "Talebi kaydet"}</button>
         </form>
       </section>

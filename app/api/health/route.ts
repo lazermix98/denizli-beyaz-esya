@@ -1,11 +1,21 @@
-import { isPublicSupabaseConfigured, isSupabaseConfigured } from "../../lib/supabase";
+import { isPublicSupabaseConfigured, isSupabaseConfigured, selectRows } from "../../lib/supabase";
 
 export async function GET() {
+  let database = "not_configured";
+
+  if (isSupabaseConfigured()) {
+    try {
+      await selectRows("companies?select=id&limit=1");
+      database = "ok";
+    } catch {
+      database = "error";
+    }
+  }
+
   return Response.json({
-    ok: true,
+    ok: database !== "error",
     app: "İşletme AI Otomasyon",
-    demoCompany: "Denizli Beyaz Eşya Servisi",
-    databaseConfigured: isSupabaseConfigured(),
+    database,
     publicSupabaseConfigured: isPublicSupabaseConfigured(),
     openAiConfigured: Boolean(process.env.OPENAI_API_KEY),
     time: new Date().toISOString(),

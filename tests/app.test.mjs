@@ -18,13 +18,14 @@ test("uses standard Next.js and Vercel output", async () => {
 });
 
 test("keeps secrets out and supports one-click setup", async () => {
-  const [envExample, gitignore, supabase, setup, setupCore, setupRoute] = await Promise.all([
+  const [envExample, gitignore, supabase, setup, setupCore, setupRoute, page] = await Promise.all([
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
     readFile(new URL("../.gitignore", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/supabase.ts", import.meta.url), "utf8"),
     readFile(new URL("../scripts/setup.mjs", import.meta.url), "utf8"),
     readFile(new URL("../scripts/setup-core.mjs", import.meta.url), "utf8"),
     readFile(new URL("../app/api/setup/route.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(gitignore, /\.env\*/);
   assert.match(envExample, /NEXT_PUBLIC_SUPABASE_URL/);
@@ -32,17 +33,61 @@ test("keeps secrets out and supports one-click setup", async () => {
   assert.match(envExample, /SUPABASE_DB_URL=/);
   assert.match(setup, /runSetup/);
   assert.match(setupCore, /db\/supabase-schema\.sql/);
-  assert.match(setupCore, /insert into staff_users/);
-  assert.match(setupRoute, /runSetup/);
+  assert.match(setupCore, /pg_advisory_xact_lock/);
+  assert.match(setupCore, /insert into setup_state/);
+  assert.match(setupCore, /'owner'/);
+  assert.match(setupRoute, /getSetupStatus/);
+  assert.match(setupRoute, /Kurulum zaten tamamlan/);
   assert.match(setupRoute, /sessionCookie/);
   assert.doesNotMatch(envExample, /sk-[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{20,}/);
   assert.match(supabase, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(page, /SUPABASE_SERVICE_ROLE_KEY|service_role/i);
 });
 
-test("includes production product sections and multi-tenant database", async () => {
-  const [page, schema] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+test("enforces auth roles and tenant-safe mutations", async () => {
+  const [auth, records, supabase, schema] = await Promise.all([
+    readFile(new URL("../app/lib/auth.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/records/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/supabase.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/supabase-schema.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(auth, /StaffRole/);
+  assert.match(auth, /requireRole/);
+  assert.match(auth, /"owner", "admin"/);
+  assert.match(schema, /role in \('owner', 'admin', 'staff'\)/);
+  assert.match(schema, /setup_state/);
+  assert.match(schema, /current_tenant_company_id/);
+  assert.match(schema, /authenticated tenant manages own customers/);
+  assert.match(schema, /prevent_completed_setup_state_change/);
+  assert.match(records, /requireUser\(request\)/);
+  assert.match(records, /requireAdmin\(request\)/);
+  assert.match(records, /session\.companyId/);
+  assert.match(records, /updateTenantRow/);
+  assert.match(records, /deleteTenantRow/);
+  assert.match(supabase, /company_id=eq/);
+});
+
+test("hardens public form and login endpoints", async () => {
+  const [publicRoute, loginRoute, resetRoute] = await Promise.all([
+    readFile(new URL("../app/api/service-requests/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/auth/password-reset/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(publicRoute, /checkRateLimit/);
+  assert.match(publicRoute, /website/);
+  assert.match(publicRoute, /cleanText/);
+  assert.match(publicRoute, /isMobilePhone/);
+  assert.doesNotMatch(publicRoute, /return Response\.json\(\{ ok: true, customer/);
+  assert.match(loginRoute, /checkRateLimit/);
+  assert.match(loginRoute, /Giriş bilgileri hatalı/);
+  assert.doesNotMatch(loginRoute, /kullanıcı bulunamadı|hesap yok/i);
+  assert.match(resetRoute, /Eğer hesap varsa/);
+});
+
+test("includes production product sections and module boundaries", async () => {
+  const [page, architecture] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/modules/ARCHITECTURE.md", import.meta.url), "utf8"),
   ]);
   for (const text of [
     "Müşteri talep formu",
@@ -61,9 +106,22 @@ test("includes production product sections and multi-tenant database", async () 
   ]) {
     assert.match(page, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  assert.match(schema, /create table if not exists companies/);
-  assert.match(schema, /company_id uuid not null/);
-  assert.match(schema, /enable row level security/);
-  assert.match(schema, /staff_users/);
+  for (const domain of [
+    "auth",
+    "companies",
+    "staff",
+    "customers",
+    "service-requests",
+    "appointments",
+    "work-records",
+    "devices",
+    "ai-content",
+    "whatsapp-templates",
+    "pdf",
+    "settings",
+    "shared",
+  ]) {
+    assert.match(architecture, new RegExp(`\`${domain}\``));
+  }
   assert.doesNotMatch(page, /localStorage|demoCustomers|initialAppointments/);
 });

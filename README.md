@@ -79,6 +79,41 @@ GET /api/health
 
 Beklenen production sonucu:
 
-- `databaseConfigured: true`
+- `database: ok`
 - `publicSupabaseConfigured: true`
 - `openAiConfigured: true`
+
+## V1 Güvenlik Omurgası
+
+- Roller: `owner`, `admin`, `staff`.
+- Admin API endpointleri sunucu tarafında oturum kontrolü yapar.
+- Güncelleme ve silme işlemleri `company_id` filtresiyle tenant-safe yapılır.
+- İstemciden gelen `company_id` değerine güvenilmez.
+- Login denemeleri rate limit ile sınırlandırılır.
+- Public talep formunda server-side validation, rate limit, honeypot ve maksimum alan uzunluğu vardır.
+- `/api/setup` yalnızca ilk kurulumda çalışır; transaction ve advisory lock ile eş zamanlı kurulum riski azaltılır.
+- Kurulum tamamlandığı `setup_state` tablosunda tutulur.
+- `SUPABASE_SERVICE_ROLE_KEY` yalnızca sunucu tarafında kullanılır.
+- Sağlık endpointi secret veya bağlantı detayı döndürmez.
+
+## Modüler Mimari
+
+Yeni geliştirmeler `app/modules/<domain>` altında ilerlemelidir.
+
+Alanlar:
+
+- `auth`
+- `companies`
+- `staff`
+- `customers`
+- `service-requests`
+- `appointments`
+- `work-records`
+- `devices`
+- `ai-content`
+- `whatsapp-templates`
+- `pdf`
+- `settings`
+- `shared`
+
+Her modülde `types`, `validation`, `repository/data-access`, `service/business-logic`, `UI components`, `API/server actions` ve `tests` ayrı tutulmalıdır.

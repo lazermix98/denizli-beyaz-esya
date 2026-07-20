@@ -105,13 +105,15 @@ export async function getSetupStatus() {
       const counts = await db.query(`
         select
           (select count(*)::int from companies) as company_count,
-          (select count(*)::int from staff_users where role = 'admin' and is_active = true) as admin_count
+          (select count(*)::int from staff_users where role in ('owner', 'admin') and is_active = true) as admin_count,
+          coalesce((select completed from setup_state where key = 'initial_setup'), false) as setup_completed
       `);
       const companyCount = Number(counts.rows[0]?.company_count || 0);
       const adminCount = Number(counts.rows[0]?.admin_count || 0);
+      const setupCompleted = Boolean(counts.rows[0]?.setup_completed);
       return {
         ready: true,
-        installed: companyCount > 0 && adminCount > 0,
+        installed: setupCompleted || (companyCount > 0 && adminCount > 0),
         missingEnv: [],
         adminCount,
         companyCount,
@@ -153,7 +155,12 @@ export async function runSetup(input = {}) {
   const result = await withClient(async (db) => {
     await db.query("begin");
     try {
+      await db.query("select pg_advisory_xact_lock(741258963)");
       await db.query(migration);
+      const existingSetup = await db.query("select completed from setup_state where key = 'initial_setup' for update");
+      if (existingSetup.rows[0]?.completed) {
+        throw new Error("Kurulum zaten tamamlanmış.");
+      }
       const company = await db.query(
         `
         insert into companies (name, slug, phone, whatsapp, sector)
@@ -170,15 +177,23 @@ export async function runSetup(input = {}) {
       const staff = await db.query(
         `
         insert into staff_users (company_id, email, password_hash, role, is_active)
-        values ($1, $2, $3, 'admin', true)
+        values ($1, $2, $3, 'owner', true)
         on conflict (email) do update set
           company_id = excluded.company_id,
           password_hash = excluded.password_hash,
-          role = 'admin',
+          role = 'owner',
           is_active = true
         returning id, company_id, email, role
         `,
         [company.rows[0].id, adminEmail, hashPassword(adminPassword)]
+      );
+      await db.query(
+        `
+        insert into setup_state (key, completed, completed_at, company_id)
+        values ('initial_setup', true, now(), $1)
+        on conflict (key) do nothing
+        `,
+        [company.rows[0].id]
       );
       await db.query("commit");
       return { company: company.rows[0], admin: staff.rows[0] };

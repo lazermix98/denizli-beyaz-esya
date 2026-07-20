@@ -1,21 +1,14 @@
 import { selectRows } from "./supabase";
+import type { AdminSession, StaffRole } from "../modules/auth/types";
 
 const cookieName = "business_ai_session";
 const encoder = new TextEncoder();
-
-export type AdminSession = {
-  sub: string;
-  email: string;
-  role: "admin" | "staff";
-  companyId: string;
-  exp: number;
-};
 
 type UserRow = {
   id: string;
   company_id: string;
   email: string;
-  role: "admin" | "staff";
+  role: StaffRole;
   password_hash: string;
   is_active: boolean;
 };
@@ -89,21 +82,31 @@ export async function requireUser(request: Request) {
   return session;
 }
 
-export async function requireAdmin(request: Request) {
+export async function requireRole(request: Request, roles: StaffRole[]) {
   const session = await requireUser(request);
   if (session instanceof Response) return session;
-  if (session.role !== "admin") {
-    return Response.json({ error: "Bu işlem için admin yetkisi gerekli." }, { status: 403 });
+  if (!roles.includes(session.role)) {
+    return Response.json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
   }
   return session;
 }
 
+export async function requireAdmin(request: Request) {
+  return requireRole(request, ["owner", "admin"]);
+}
+
+export async function requireOwner(request: Request) {
+  return requireRole(request, ["owner"]);
+}
+
 export function sessionCookie(token: string) {
-  return `${cookieName}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=28800`;
+  const secure = process.env.NODE_ENV === "production" ? "Secure; " : "";
+  return `${cookieName}=${token}; HttpOnly; ${secure}SameSite=Lax; Path=/; Max-Age=28800`;
 }
 
 export function clearSessionCookie() {
-  return `${cookieName}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+  const secure = process.env.NODE_ENV === "production" ? "Secure; " : "";
+  return `${cookieName}=; HttpOnly; ${secure}SameSite=Lax; Path=/; Max-Age=0`;
 }
 
 export async function findUserByEmail(email: string) {

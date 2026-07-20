@@ -10,12 +10,19 @@ create table if not exists companies (
   created_at timestamptz not null default now()
 );
 
+create table if not exists setup_state (
+  key text primary key,
+  completed boolean not null default false,
+  completed_at timestamptz,
+  company_id uuid references companies(id) on delete restrict
+);
+
 create table if not exists staff_users (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references companies(id) on delete cascade,
   email text not null unique,
   password_hash text not null,
-  role text not null check (role in ('admin', 'staff')),
+  role text not null check (role in ('owner', 'admin', 'staff')),
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -116,7 +123,33 @@ create index if not exists jobs_company_idx on jobs(company_id, created_at desc)
 create index if not exists appointments_company_idx on appointments(company_id, appointment_at);
 create index if not exists ai_contents_company_idx on ai_contents(company_id, created_at desc);
 
+create or replace function current_tenant_company_id()
+returns uuid
+language sql
+stable
+as $$
+  select nullif(auth.jwt() ->> 'company_id', '')::uuid
+$$;
+
+create or replace function prevent_completed_setup_state_change()
+returns trigger
+language plpgsql
+as $$
+begin
+  if old.completed then
+    raise exception 'setup_state is immutable after completion';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists setup_state_immutable_after_completion on setup_state;
+create trigger setup_state_immutable_after_completion
+before update or delete on setup_state
+for each row execute function prevent_completed_setup_state_change();
+
 alter table companies enable row level security;
+alter table setup_state enable row level security;
 alter table staff_users enable row level security;
 alter table customers enable row level security;
 alter table requests enable row level security;
@@ -129,6 +162,7 @@ alter table report_files enable row level security;
 
 drop policy if exists "public can create website requests" on requests;
 drop policy if exists "service role manages companies" on companies;
+drop policy if exists "service role manages setup state" on setup_state;
 drop policy if exists "service role manages staff" on staff_users;
 drop policy if exists "service role manages customers" on customers;
 drop policy if exists "service role manages requests" on requests;
@@ -138,8 +172,19 @@ drop policy if exists "service role manages appointments" on appointments;
 drop policy if exists "service role manages ai contents" on ai_contents;
 drop policy if exists "service role manages templates" on message_templates;
 drop policy if exists "service role manages reports" on report_files;
+drop policy if exists "authenticated tenant reads own company" on companies;
+drop policy if exists "authenticated tenant manages own staff" on staff_users;
+drop policy if exists "authenticated tenant manages own customers" on customers;
+drop policy if exists "authenticated tenant manages own requests" on requests;
+drop policy if exists "authenticated tenant manages own devices" on devices;
+drop policy if exists "authenticated tenant manages own jobs" on jobs;
+drop policy if exists "authenticated tenant manages own appointments" on appointments;
+drop policy if exists "authenticated tenant manages own ai contents" on ai_contents;
+drop policy if exists "authenticated tenant manages own templates" on message_templates;
+drop policy if exists "authenticated tenant manages own reports" on report_files;
 
 create policy "service role manages companies" on companies for all to service_role using (true) with check (true);
+create policy "service role manages setup state" on setup_state for all to service_role using (true) with check (true);
 create policy "service role manages staff" on staff_users for all to service_role using (true) with check (true);
 create policy "service role manages customers" on customers for all to service_role using (true) with check (true);
 create policy "service role manages requests" on requests for all to service_role using (true) with check (true);
@@ -149,6 +194,27 @@ create policy "service role manages appointments" on appointments for all to ser
 create policy "service role manages ai contents" on ai_contents for all to service_role using (true) with check (true);
 create policy "service role manages templates" on message_templates for all to service_role using (true) with check (true);
 create policy "service role manages reports" on report_files for all to service_role using (true) with check (true);
+
+create policy "authenticated tenant reads own company" on companies
+  for select to authenticated using (id = current_tenant_company_id());
+create policy "authenticated tenant manages own staff" on staff_users
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own customers" on customers
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own requests" on requests
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own devices" on devices
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own jobs" on jobs
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own appointments" on appointments
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own ai contents" on ai_contents
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own templates" on message_templates
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
+create policy "authenticated tenant manages own reports" on report_files
+  for all to authenticated using (company_id = current_tenant_company_id()) with check (company_id = current_tenant_company_id());
 
 insert into companies (name, slug, phone, whatsapp, sector)
 values ('Denizli Beyaz Eşya Servisi', 'denizli-beyaz-esya-servisi', '0532 639 78 98', '905326397898', 'Beyaz eşya ve klima servisi')
