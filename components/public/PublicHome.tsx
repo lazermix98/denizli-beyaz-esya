@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import { companySettings, services } from "../../features/settings/company";
 import { postJson } from "../../features/shared/utils";
 
@@ -81,22 +82,19 @@ export function PublicHome() {
               İlk referans uygulama: {companySettings.referenceCompany}.
             </span>
             <div className="hero-actions">
+              <a href="/demo-admin">Demo paneli incele</a>
               <a href="#demo-talep">Demo talep et</a>
               <a href={companySettings.whatsappUrl} target="_blank" rel="noreferrer">WhatsApp ile görüş</a>
             </div>
           </div>
-          <div className="hero-panel" aria-label="Ürün paneli önizlemesi">
-            <div className="panel-header"><span /> <span /> <span /></div>
-            <div className="panel-metrics">
-              <strong>128</strong><span>Aktif müşteri</span>
-              <strong>34</strong><span>Bekleyen talep</span>
-              <strong>18</strong><span>Bugünkü iş</span>
-            </div>
-            <div className="panel-flow">
-              <span>Talep alındı</span>
-              <span>Randevu planlandı</span>
-              <span>PDF rapor hazır</span>
-            </div>
+          <div className="hero-visual" aria-label="Ürün paneli önizlemesi">
+            <Image
+              src="/images/saas-dashboard-hero.png"
+              alt="Farklı sektörlere uyarlanabilen işletme yönetim paneli önizlemesi"
+              width={1792}
+              height={1024}
+              priority
+            />
           </div>
         </header>
 
@@ -113,6 +111,14 @@ export function PublicHome() {
             <h2>Dağınık WhatsApp mesajlarını, notları ve Excel listelerini düzenli bir sisteme dönüştürür.</h2>
             <p>İşletme sahibi ne geldiğini, kime dönüleceğini, hangi işin tamamlandığını ve hangi içeriğin yayınlanacağını tek yerden görür.</p>
           </div>
+          <figure className="workflow-visual">
+            <Image
+              src="/images/saas-workflow-visual.png"
+              alt="Talep, müşteri, randevu, iş kaydı, PDF rapor ve içerik akışını gösteren kurumsal otomasyon görseli"
+              width={1792}
+              height={1024}
+            />
+          </figure>
           <div className="outcome-grid">
             {outcomes.map(([title, text]) => (
               <article key={title}>
