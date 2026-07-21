@@ -83,7 +83,6 @@ export function PublicHome() {
             </span>
             <div className="hero-actions">
               <a href="/demo-admin">Demo paneli incele</a>
-              <a href="/demo/tespih-satis">Tespih satış demosu</a>
               <a href="#demo-talep">Demo talep et</a>
               <a href={companySettings.whatsappUrl} target="_blank" rel="noreferrer">WhatsApp ile görüş</a>
             </div>
@@ -145,7 +144,6 @@ export function PublicHome() {
           <div className="section-kicker">Hangi sektörlere uyar?</div>
           <div className="sector-grid">
             {sectors.map((sector) => <article key={sector}>{sector}</article>)}
-            <article><a href="/demo/tespih-satis">Tespih ve hediyelik eşya satış demosu</a></article>
           </div>
         </section>
 
