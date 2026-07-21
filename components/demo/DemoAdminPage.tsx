@@ -20,12 +20,12 @@ const customers = [
 ];
 
 const appointments = [
-  ["09:30", "Ayşe Yılmaz", "Buzdolabı arıza tespiti", "Teknisyen: Kerem"],
-  ["10:15", "Mehmet Kaya", "Çamaşır makinesi motor kontrolü", "Teknisyen: Barış"],
-  ["11:00", "Ali Aksoy", "Elektrik bağlantı keşfi", "Teknisyen: Selim"],
-  ["13:30", "Zeynep Arslan", "Fırın rezistans kontrolü", "Teknisyen: Kerem"],
-  ["15:00", "Selin Aydın", "Güzellik merkezi demo görüşmesi", "Satış: Deniz"],
-  ["16:20", "Emre Öz", "Restoran kurulum planı", "Satış: Deniz"],
+  ["09:30", "Ayşe Yılmaz", "Buzdolabı arıza tespiti", "Kerem"],
+  ["10:15", "Mehmet Kaya", "Çamaşır makinesi motor kontrolü", "Barış"],
+  ["11:00", "Ali Aksoy", "Elektrik bağlantı keşfi", "Selim"],
+  ["13:30", "Zeynep Arslan", "Fırın rezistans kontrolü", "Kerem"],
+  ["15:00", "Selin Aydın", "Güzellik merkezi demo görüşmesi", "Deniz"],
+  ["16:20", "Emre Öz", "Restoran kurulum planı", "Deniz"],
 ];
 
 const inventory = [
@@ -45,33 +45,23 @@ const technicians = [
 ];
 
 const revenue = [42, 58, 51, 74, 68, 88, 79, 96, 84, 112, 124, 138];
-const statusMix = [["Bekleyen", 34], ["Randevulu", 28], ["Tamamlandı", 76], ["Parça bekliyor", 11]];
-
-const requests = [
-  "WhatsApp üzerinden klima bakım talebi alındı",
-  "Web formundan buzdolabı soğutmuyor kaydı geldi",
-  "Google İşletme yorumu için cevap taslağı hazırlandı",
-  "TikTok içerik takvimi için yeni konu önerildi",
-  "PDF servis fişi müşteri kartına bağlandı",
-  "Yeni müşteri kartı ve cihaz geçmişi oluşturuldu",
-];
-
-const contents = [
-  "Instagram: Yaz gelmeden klima bakım kampanyası",
-  "Google İşletme: Aynı gün servis duyurusu",
-  "Blog: Buzdolabı neden soğutmaz?",
-  "TikTok: 30 saniyelik servis öncesi kontrol videosu",
-  "WhatsApp: Randevu hatırlatma mesajı",
+const kpis = [
+  ["Müşteri", "1.248", "+36 bu ay"],
+  ["Bekleyen talep", "34", "12 acil kayıt"],
+  ["Bugünkü randevu", "18", "6 tamamlandı"],
+  ["Aylık ciro", "₺286.400", "%22 artış"],
+  ["Tamamlanan iş", "76", "+9 bu hafta"],
+  ["Stok uyarısı", "4", "kritik parça"],
 ];
 
 export function DemoAdminPage() {
   return (
-    <main className="demo-admin-page">
-      <aside className="demo-sidebar">
-        <div className="demo-brand">
+    <main className="premium-demo-page">
+      <aside className="premium-demo-sidebar">
+        <div className="premium-demo-brand">
           <span>IA</span>
           <div>
-            <strong>İşletme AI Otomasyon</strong>
+            <strong>İşletme AI</strong>
             <small>Demo operasyon paneli</small>
           </div>
         </div>
@@ -80,149 +70,173 @@ export function DemoAdminPage() {
         ))}
       </aside>
 
-      <section className="demo-workspace" id="demo-dashboard">
-        <nav className="demo-topbar">
+      <section className="premium-demo-workspace" id="demo-dashboard">
+        <nav className="premium-demo-topbar">
           <div>
             <span>Canlı demo</span>
             <strong>Denizli Beyaz Eşya Servisi</strong>
           </div>
-          <div className="demo-topbar-actions">
-            <strong>21 Temmuz 2026</strong>
+          <label>
+            <span>Arama</span>
+            <input placeholder="Müşteri, talep veya iş ara" />
+          </label>
+          <div className="premium-demo-actions">
+            <button type="button" aria-label="Bildirimler">●</button>
+            <button type="button" aria-label="Ayarlar">Ayarlar</button>
             <Link href="/">Ana sayfaya dön</Link>
           </div>
         </nav>
 
-        <header className="demo-hero-card">
+        <header className="premium-dashboard-header">
           <div>
-            <span>Bugünün operasyon özeti</span>
-            <h1>Dolu veriyle çalışan profesyonel SaaS paneli</h1>
-            <p>Müşteri resmi, cihaz geçmişi, stok, kullanılan parça, randevu, ciro ve içerik üretimi aynı yönetim ekranında görünür.</p>
+            <span className="premium-eyebrow">Günaydın Denizli Beyaz Eşya</span>
+            <h1>Bugünkü özet</h1>
+            <p>Müşteri, randevu, iş, stok, ciro ve içerik akışları tek bir sessiz operasyon ekranında toplanır.</p>
           </div>
-          <div className="demo-score">
-            <strong>94%</strong>
-            <span>Günlük iş tamamlama</span>
-          </div>
+          <button type="button" className="quiet-button">Demo verileri</button>
         </header>
 
-        <section className="demo-kpis">
-          <article><span>Toplam müşteri</span><strong>1.248</strong><small>+36 bu ay</small></article>
-          <article><span>Bekleyen talep</span><strong>34</strong><small>12 acil kayıt</small></article>
-          <article><span>Bugünkü randevu</span><strong>18</strong><small>6 tamamlandı</small></article>
-          <article><span>Aylık ciro</span><strong>₺286.400</strong><small>%22 artış</small></article>
-          <article><span>Stok uyarısı</span><strong>4</strong><small>Kritik parça</small></article>
+        <section className="premium-kpi-grid">
+          {kpis.map(([label, value, trend], index) => (
+            <article className={`premium-kpi ${index === 1 || index === 5 ? "warning" : index === 3 || index === 4 ? "success" : ""}`} key={label}>
+              <span className="premium-kpi-icon">{label.slice(0, 1)}</span>
+              <span className="premium-kpi-label">{label}</span>
+              <strong>{value}</strong>
+              <small>{trend}</small>
+            </article>
+          ))}
         </section>
 
-        <section className="demo-grid">
-          <article className="demo-card demo-span-2">
-            <div className="demo-card-head">
-              <strong>Gelir ve tamamlanan işler</strong>
-              <span>12 aylık görünüm</span>
+        <section className="premium-dashboard-main">
+          <article className="premium-panel revenue-panel">
+            <div className="premium-panel-head">
+              <div>
+                <span>12 aylık görünüm</span>
+                <strong>Gelir ve tamamlanan işler</strong>
+              </div>
+              <span className="mini-badge success">+22%</span>
             </div>
-            <div className="demo-chart">
+            <div className="premium-chart">
               {revenue.map((value, index) => (
-                <span style={{ height: `${value}px` }} title={`${index + 1}. ay`} key={index} />
+                <span style={{ height: `${Math.max(34, value * 1.35)}px` }} title={`${index + 1}. ay`} key={index} />
               ))}
+            </div>
+            <div className="premium-chart-footer">
+              <span>Ocak</span>
+              <span>Haziran</span>
+              <span>Aralık</span>
             </div>
           </article>
 
-          <article className="demo-card">
-            <div className="demo-card-head">
-              <strong>Servis durumu</strong>
-              <span>Anlık dağılım</span>
+          <aside className="premium-panel">
+            <div className="premium-panel-head">
+              <div>
+                <span>Takvim</span>
+                <strong>Bugünkü işler</strong>
+              </div>
+              <span className="mini-badge">6 randevu</span>
             </div>
-            <div className="demo-status-mix">
-              {statusMix.map(([label, value]) => (
-                <div key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="demo-card demo-span-2">
-            <div className="demo-card-head">
-              <strong>Müşteri, cihaz ve parça kayıtları</strong>
-              <span>16 örnek kayıt</span>
-            </div>
-            <div className="demo-table">
-              {customers.map(([initials, name, service, district, part, stock, status]) => (
-                <div className="demo-row rich" key={`${name}-${service}`}>
-                  <span className="demo-avatar">{initials}</span>
-                  <span><strong>{name}</strong><small>{district}</small></span>
-                  <span><strong>{service}</strong><small>Kullanılan: {part}</small></span>
-                  <span><strong>{stock}</strong><small>stok</small></span>
-                  <mark>{status}</mark>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="demo-card">
-            <div className="demo-card-head">
-              <strong>Bugünkü randevular</strong>
-              <span>Takvim</span>
-            </div>
-            <div className="demo-timeline">
+            <div className="timeline-list">
               {appointments.map(([time, name, job, owner]) => (
-                <div key={`${time}-${name}`}>
-                  <strong>{time}</strong>
-                  <span>{name}</span>
-                  <small>{job}</small>
-                  <em>{owner}</em>
-                </div>
+                <article key={`${time}-${name}`}>
+                  <time>{time}</time>
+                  <div>
+                    <strong>{name}</strong>
+                    <small>{job} · {owner}</small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </aside>
+        </section>
+
+        <section className="premium-split-grid">
+          <article className="premium-panel">
+            <div className="premium-panel-head">
+              <div>
+                <span>CRM aktivitesi</span>
+                <strong>Müşteri hareketleri</strong>
+              </div>
+              <span className="mini-badge">16 kayıt</span>
+            </div>
+            <div className="premium-table">
+              {customers.slice(0, 8).map(([initial, name, service, district, part, stock, status]) => (
+                <article key={`${name}-${service}`}>
+                  <span className="premium-avatar">{initial}</span>
+                  <div>
+                    <strong>{name}</strong>
+                    <small>{district} · {service}</small>
+                  </div>
+                  <span>{part} · {stock} stok</span>
+                  <span className="mini-badge">{status}</span>
+                </article>
               ))}
             </div>
           </article>
 
-          <article className="demo-card">
-            <div className="demo-card-head">
-              <strong>Yedek parça stoku</strong>
-              <span>Depo takibi</span>
+          <article className="premium-panel">
+            <div className="premium-panel-head">
+              <div>
+                <span>Depo</span>
+                <strong>Yedek parça stoku</strong>
+              </div>
+              <span className="mini-badge warning">4 uyarı</span>
             </div>
-            <div className="demo-inventory">
+            <div className="premium-inventory">
               {inventory.map(([part, count, percent, status]) => (
-                <div key={part}>
-                  <span><strong>{part}</strong><small>{count} - {status}</small></span>
+                <article key={part}>
+                  <div>
+                    <strong>{part}</strong>
+                    <small>{count} · {status}</small>
+                  </div>
                   <i><b style={{ width: `${percent}%` }} /></i>
-                </div>
+                </article>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <section className="premium-split-grid">
+          <article className="premium-panel">
+            <div className="premium-panel-head">
+              <div>
+                <span>Ekip</span>
+                <strong>Teknisyen performansı</strong>
+              </div>
+              <span className="mini-badge success">aktif</span>
+            </div>
+            <div className="premium-inventory">
+              {technicians.map(([name, jobs, amount, percent]) => (
+                <article key={name}>
+                  <div>
+                    <strong>{name}</strong>
+                    <small>{jobs} · {amount}</small>
+                  </div>
+                  <i><b style={{ width: `${percent}%` }} /></i>
+                </article>
               ))}
             </div>
           </article>
 
-          <article className="demo-card">
-            <div className="demo-card-head">
-              <strong>Teknisyen performansı</strong>
-              <span>Günlük ekip</span>
+          <article className="premium-panel">
+            <div className="premium-panel-head">
+              <div>
+                <span>Pazarlama</span>
+                <strong>AI içerik akışı</strong>
+              </div>
+              <span className="mini-badge">hazır</span>
             </div>
-            <div className="demo-technicians">
-              {technicians.map(([name, jobs, revenueText, percent]) => (
-                <div key={name}>
-                  <span className="demo-avatar small">{String(name).slice(0, 2)}</span>
-                  <span><strong>{name}</strong><small>{jobs} - {revenueText}</small></span>
-                  <i><b style={{ width: `${percent}%` }} /></i>
-                </div>
+            <div className="compact-list">
+              {["Instagram klima bakım kampanyası", "Google İşletme gönderisi", "Blog: Buzdolabı neden soğutmaz?", "WhatsApp randevu hatırlatma"].map((item) => (
+                <article key={item}>
+                  <span className="list-dot" />
+                  <div>
+                    <strong>{item}</strong>
+                    <small>Taslak içerik oluşturuldu</small>
+                  </div>
+                  <span className="mini-badge success">hazır</span>
+                </article>
               ))}
-            </div>
-          </article>
-
-          <article className="demo-card">
-            <div className="demo-card-head">
-              <strong>Son talepler</strong>
-              <span>Yeni akış</span>
-            </div>
-            <div className="demo-list">
-              {requests.map((request) => <p key={request}>{request}</p>)}
-            </div>
-          </article>
-
-          <article className="demo-card demo-span-2">
-            <div className="demo-card-head">
-              <strong>AI içerik ve pazarlama akışı</strong>
-              <span>Hazır içerikler</span>
-            </div>
-            <div className="demo-content-grid">
-              {contents.map((content) => <p key={content}>{content}</p>)}
             </div>
           </article>
         </section>
