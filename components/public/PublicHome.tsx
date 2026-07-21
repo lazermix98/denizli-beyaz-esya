@@ -33,7 +33,7 @@ export function PublicHome() {
   }
 
   return (
-    <main className="app">
+    <main className="app public-app">
       <section className="site">
         <nav className="site-nav">
           <strong>{companySettings.productName}</strong>
@@ -51,11 +51,20 @@ export function PublicHome() {
             <a href={companySettings.whatsappUrl} target="_blank" rel="noreferrer">WhatsApp talebi oluştur</a>
           </div>
         </header>
+        <section className="trust-strip" aria-label="Ürün kapsamı">
+          <article><strong>Multi-tenant</strong><span>Firma verileri ayrılır</span></article>
+          <article><strong>Production DB</strong><span>Supabase üzerinde kalıcı veri</span></article>
+          <article><strong>Mobil panel</strong><span>Sahada hızlı kullanım</span></article>
+          <article><strong>AI hazir</strong><span>Feature flag ile yonetilir</span></article>
+        </section>
         <section className="service-grid">
           {services.map((service) => <article key={service}>{service}</article>)}
         </section>
         <form className="public-form" onSubmit={submitPublicRequest}>
-          <h2>Müşteri talep formu</h2>
+          <div className="section-heading">
+            <h2>Müşteri talep formu</h2>
+            <span>Supabase kaydı aktif</span>
+          </div>
           <div className="form-grid">
             <label>Ad Soyad<input required minLength={3} value={publicForm.fullName} onChange={(e) => setPublicForm({ ...publicForm, fullName: e.target.value })} /></label>
             <label>Telefon<input required pattern="0?5[0-9]{9}" value={publicForm.phone} onChange={(e) => setPublicForm({ ...publicForm, phone: e.target.value })} /></label>

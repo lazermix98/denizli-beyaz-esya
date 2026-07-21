@@ -28,7 +28,10 @@ export function RecordList({
 }) {
   return (
     <section className="list">
-      <h3>{title}</h3>
+      <div className="section-heading">
+        <h3>{title}</h3>
+        {!loading && <span>{items.length} gösterilen kayıt</span>}
+      </div>
       {loading ? <ListSkeleton /> : items.length === 0 ? <EmptyState>No results</EmptyState> : items.map((item) => <p key={item}>{item}</p>)}
       <Pagination meta={pagination} onPageChange={onPageChange} onPerPageChange={onPerPageChange} />
     </section>
@@ -54,7 +57,10 @@ export function CrudCard({
 }) {
   return (
     <section className="card">
-      <h2>{title}</h2>
+      <div className="section-heading">
+        <h2>{title}</h2>
+        <span>Canlı Supabase verisi</span>
+      </div>
       {children}
       <RecordList title="Kayıtlar" items={items} loading={loading} pagination={pagination} onPageChange={onPageChange} onPerPageChange={onPerPageChange} />
     </section>
