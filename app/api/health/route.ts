@@ -14,10 +14,11 @@ export async function GET() {
 
   return Response.json({
     ok: database !== "error",
-    app: "İşletme AI Otomasyon",
+    app: "Isletme AI Otomasyon",
     database,
     publicSupabaseConfigured: isPublicSupabaseConfigured(),
     openAiConfigured: Boolean(process.env.OPENAI_API_KEY),
+    aiFeatureEnabled: process.env.AI_FEATURE_ENABLED === "true",
     time: new Date().toISOString(),
   });
 }

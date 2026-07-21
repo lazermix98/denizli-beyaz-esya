@@ -29,6 +29,7 @@ SUPABASE_DB_URL=
 AUTH_SECRET=
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5-mini
+AI_FEATURE_ENABLED=false
 DEFAULT_COMPANY_SLUG=denizli-beyaz-esya-servisi
 ADMIN_EMAIL=admin@denizlibeyazesya.com
 ADMIN_PASSWORD=
@@ -62,6 +63,10 @@ Bu komut SQL çıktısı üretmez; migration ve admin oluşturma işlemini doğr
 - Output Directory: boş
 - Install Command: varsayılan
 - Production branch: `main`
+
+## AI Feature Flag
+
+`AI_FEATURE_ENABLED=false` iken AI icerik uretimi kontrollu olarak kapalidir ve `/api/ai/content` `AI service unavailable` cevabi dondurur. V1 kabul testlerinde AI billing aktif degilse AI uretimi zorunlu kriter degildir.
 
 ## Test ve Build
 

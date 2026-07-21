@@ -18,19 +18,21 @@ test("uses standard Next.js and Vercel output", async () => {
 });
 
 test("keeps secrets out and supports one-click setup", async () => {
-  const [envExample, gitignore, supabase, setup, setupCore, setupRoute, page] = await Promise.all([
+  const [envExample, gitignore, supabase, setup, setupCore, setupRoute, aiRoute, page] = await Promise.all([
     readFile(new URL("../.env.example", import.meta.url), "utf8"),
     readFile(new URL("../.gitignore", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/supabase.ts", import.meta.url), "utf8"),
     readFile(new URL("../scripts/setup.mjs", import.meta.url), "utf8"),
     readFile(new URL("../scripts/setup-core.mjs", import.meta.url), "utf8"),
     readFile(new URL("../app/api/setup/route.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/ai/content/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(gitignore, /\.env\*/);
   assert.match(envExample, /NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(envExample, /SUPABASE_SERVICE_ROLE_KEY=/);
   assert.match(envExample, /SUPABASE_DB_URL=/);
+  assert.match(envExample, /AI_FEATURE_ENABLED=false/);
   assert.match(setup, /runSetup/);
   assert.match(setupCore, /db\/supabase-schema\.sql/);
   assert.match(setupCore, /pg_advisory_xact_lock/);
@@ -41,6 +43,8 @@ test("keeps secrets out and supports one-click setup", async () => {
   assert.match(setupRoute, /sessionCookie/);
   assert.doesNotMatch(envExample, /sk-[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{20,}/);
   assert.match(supabase, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(aiRoute, /AI_FEATURE_ENABLED/);
+  assert.match(aiRoute, /AI_DISABLED/);
   assert.doesNotMatch(page, /SUPABASE_SERVICE_ROLE_KEY|service_role/i);
 });
 

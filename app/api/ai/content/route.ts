@@ -7,16 +7,33 @@ type AiRequest = {
   tone?: string;
 };
 
+function isAiEnabled() {
+  return process.env.AI_FEATURE_ENABLED === "true";
+}
+
 export async function POST(request: Request) {
   const session = await requireUser(request);
   if (session instanceof Response) return session;
 
-  const { type = "Instagram gönderisi", topic = "Dijital işletme yönetimi", tone = "güven veren" } =
-    (await request.json()) as AiRequest;
+  if (!isAiEnabled()) {
+    return Response.json(
+      { error: "AI service unavailable. AI content generation is temporarily disabled.", code: "AI_DISABLED" },
+      { status: 503 }
+    );
+  }
+
+  const {
+    type = "Instagram gonderisi",
+    topic = "Dijital isletme yonetimi",
+    tone = "guven veren",
+  } = (await request.json()) as AiRequest;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return Response.json({ error: "OpenAI API anahtarı eksik. OPENAI_API_KEY environment değeri gerekli." }, { status: 503 });
+    return Response.json(
+      { error: "AI service unavailable. OPENAI_API_KEY is not configured.", code: "AI_UNAVAILABLE" },
+      { status: 503 }
+    );
   }
 
   const controller = new AbortController();
@@ -36,29 +53,38 @@ export async function POST(request: Request) {
           {
             role: "system",
             content:
-              "Türkçe, yerel işletmeler için güven veren, abartısız, satışa yardımcı ve uygulanabilir dijital pazarlama içerikleri üret.",
+              "Turkce, yerel isletmeler icin guven veren, abartisiz, satisa yardimci ve uygulanabilir dijital pazarlama icerikleri uret.",
           },
           {
             role: "user",
-            content: `İçerik türü: ${type}\nKonu: ${topic}\nTon: ${tone}\nFirma demosu: Denizli Beyaz Eşya Servisi\nTelefon: 0532 639 78 98`,
+            content: `Icerik turu: ${type}\nKonu: ${topic}\nTon: ${tone}\nFirma demosu: Denizli Beyaz Esya Servisi\nTelefon: 0532 639 78 98`,
           },
         ],
       }),
     });
 
     if (!response.ok) {
-      return Response.json({ error: `OpenAI yanıtı alınamadı. Durum: ${response.status}` }, { status: response.status === 429 ? 429 : 502 });
+      return Response.json(
+        { error: "AI service unavailable. OpenAI request could not be completed.", code: "AI_UNAVAILABLE" },
+        { status: 503 }
+      );
     }
 
     const data = await response.json();
     const content =
       data.output_text ||
-      data.output?.flatMap((item: { content?: { text?: string }[] }) => item.content || [])
+      data.output
+        ?.flatMap((item: { content?: { text?: string }[] }) => item.content || [])
         .map((item: { text?: string }) => item.text)
         .filter(Boolean)
         .join("\n");
 
-    if (!content) return Response.json({ error: "OpenAI boş içerik döndürdü." }, { status: 502 });
+    if (!content) {
+      return Response.json(
+        { error: "AI service unavailable. Empty AI response.", code: "AI_UNAVAILABLE" },
+        { status: 503 }
+      );
+    }
 
     const saved = await insertRow("ai_contents", {
       company_id: session.companyId,
@@ -69,8 +95,11 @@ export async function POST(request: Request) {
     });
 
     return Response.json({ content, saved });
-  } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "AI isteği tamamlanamadı." }, { status: 502 });
+  } catch {
+    return Response.json(
+      { error: "AI service unavailable. AI request failed.", code: "AI_UNAVAILABLE" },
+      { status: 503 }
+    );
   } finally {
     clearTimeout(timeout);
   }
