@@ -539,6 +539,14 @@ label {
   backdrop-filter: blur(14px);
 }
 
+.demo-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .demo-topbar span,
 .demo-card-head span,
 .demo-kpis span {
@@ -671,6 +679,41 @@ label {
   font-weight: 800;
 }
 
+.demo-row.rich {
+  grid-template-columns: auto 1.1fr 1.35fr .5fr auto;
+}
+
+.demo-row strong,
+.demo-row small,
+.demo-technicians strong,
+.demo-technicians small {
+  display: block;
+}
+
+.demo-row small,
+.demo-technicians small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.demo-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--navy), var(--green));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: 0 10px 22px rgba(7, 26, 51, .18);
+}
+
+.demo-avatar.small {
+  width: 32px;
+  height: 32px;
+}
+
 .demo-row mark {
   border-radius: 999px;
   background: rgba(22, 163, 74, .12);
@@ -690,11 +733,105 @@ label {
 }
 
 .demo-timeline span,
-.demo-timeline small {
+.demo-timeline small,
+.demo-timeline em {
   display: block;
   margin-top: 4px;
   color: var(--muted);
   font-weight: 800;
+}
+
+.demo-timeline em {
+  color: var(--green);
+  font-style: normal;
+}
+
+.demo-chart {
+  min-height: 190px;
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, transparent 24%, rgba(7, 26, 51, .06) 25%, transparent 26%),
+    var(--panel-2);
+  padding: 18px;
+}
+
+.demo-chart span {
+  flex: 1;
+  min-width: 12px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, var(--green), #7ed39b);
+  box-shadow: 0 12px 24px rgba(22, 163, 74, .18);
+}
+
+.demo-status-mix {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.demo-status-mix div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 14px;
+}
+
+.demo-status-mix strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 30px;
+}
+
+.demo-inventory,
+.demo-technicians {
+  display: grid;
+  gap: 12px;
+}
+
+.demo-inventory div,
+.demo-technicians div {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 12px;
+}
+
+.demo-technicians div {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.demo-inventory span,
+.demo-inventory small {
+  display: block;
+}
+
+.demo-inventory small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.demo-inventory i,
+.demo-technicians i {
+  grid-column: 1 / -1;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(7, 26, 51, .1);
+}
+
+.demo-inventory b,
+.demo-technicians b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), #9be2b1);
 }
 
 .service-grid article,
@@ -1219,6 +1356,13 @@ output {
 
   .demo-row {
     grid-template-columns: 1fr;
+  }
+
+  .demo-row.rich,
+  .demo-topbar-actions {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .demo-score {
