@@ -68,6 +68,26 @@ Bu komut SQL çıktısı üretmez; migration ve admin oluşturma işlemini doğr
 
 `AI_FEATURE_ENABLED=false` iken AI icerik uretimi kontrollu olarak kapalidir ve `/api/ai/content` `AI service unavailable` cevabi dondurur. V1 kabul testlerinde AI billing aktif degilse AI uretimi zorunlu kriter degildir.
 
+## V1 Production Release
+
+V1 production hazirdir.
+
+- Release tag: `v1.0.0`
+- Production URL: `https://denizli-beyaz-esya-kg32.vercel.app`
+- Production commit: `7086fb0`
+- Rollback commit: `7086fb0`
+- Son calisan deployment: `https://denizli-beyaz-esya-kg32-lv3mbvodl-lazermix.vercel.app`
+- AI ozelligi feature flag ile gecici olarak kapalidir.
+- `AI_FEATURE_ENABLED=false` oldugunda `/api/ai/content` kontrollu olarak `503` ve `AI_DISABLED` kodu dondurur.
+
+AI icerik uretimini tekrar acmak icin:
+
+1. OpenAI billing/kota durumunun aktif oldugunu dogrulayin.
+2. Vercel Production Environment Variables alaninda `OPENAI_API_KEY` degerinin mevcut oldugunu dogrulayin.
+3. Vercel Production Environment Variables alaninda `AI_FEATURE_ENABLED=true` olarak guncelleyin.
+4. Yeni Production deployment olusturun.
+5. `/api/health` sonucunda `aiFeatureEnabled: true` gorundugunu dogrulayin.
+
 ## Test ve Build
 
 ```bash
