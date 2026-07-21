@@ -23,7 +23,7 @@ export function PublicHome() {
     setStatus("Talebiniz gönderiliyor...");
     try {
       await postJson("/api/service-requests", publicForm);
-      setStatus("Talep kaydedildi. Yönetim panelinde görünür.");
+      setStatus("Kaydınız oluşturuldu. En kısa sürede sizinle iletişime geçilecektir.");
       setPublicForm({ ...publicForm, fullName: "", phone: "", neighborhood: "", description: "", website: "" });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Talep kaydedilemedi.");
@@ -43,19 +43,19 @@ export function PublicHome() {
           </div>
         </nav>
         <header className="hero">
-          <p>Dijital işletme yönetimi ve yapay zekâ otomasyonu</p>
-          <h1>Her sektöre uyarlanabilen müşteri, randevu, içerik ve iş takip sistemi</h1>
-          <span>İlk referans müşteri: {companySettings.referenceCompany}</span>
+          <p>Denizli ve Pamukkale bölgesinde hızlı teknik servis</p>
+          <h1>Beyaz eşya, klima ve ankastre servis talepleriniz için güvenilir çözüm</h1>
+          <span>{companySettings.referenceCompany}</span>
           <div className="hero-actions">
-            <a href="/admin">Yönetim panelini incele</a>
+            <a href={`tel:${companySettings.phoneTel}`}>Hemen ara</a>
             <a href={companySettings.whatsappUrl} target="_blank" rel="noreferrer">WhatsApp talebi oluştur</a>
           </div>
         </header>
-        <section className="trust-strip" aria-label="Ürün kapsamı">
-          <article><strong>Multi-tenant</strong><span>Firma verileri ayrılır</span></article>
-          <article><strong>Production DB</strong><span>Supabase üzerinde kalıcı veri</span></article>
-          <article><strong>Mobil panel</strong><span>Sahada hızlı kullanım</span></article>
-          <article><strong>AI hazir</strong><span>Feature flag ile yonetilir</span></article>
+        <section className="trust-strip" aria-label="Hizmet avantajları">
+          <article><strong>Hızlı dönüş</strong><span>Servis talebiniz kısa sürede değerlendirilir</span></article>
+          <article><strong>Yerel ekip</strong><span>Denizli ve Pamukkale bölgesinde hizmet</span></article>
+          <article><strong>Net iletişim</strong><span>Arıza ve randevu bilgisi anlaşılır şekilde paylaşılır</span></article>
+          <article><strong>Servis takibi</strong><span>Talebiniz kayıt altına alınır ve düzenli takip edilir</span></article>
         </section>
         <section className="service-grid">
           {services.map((service) => <article key={service}>{service}</article>)}
@@ -63,7 +63,7 @@ export function PublicHome() {
         <form className="public-form" onSubmit={submitPublicRequest}>
           <div className="section-heading">
             <h2>Müşteri talep formu</h2>
-            <span>Supabase kaydı aktif</span>
+            <span>Size ulaşabilmemiz için bilgileri doldurun</span>
           </div>
           <div className="form-grid">
             <label>Ad Soyad<input required minLength={3} value={publicForm.fullName} onChange={(e) => setPublicForm({ ...publicForm, fullName: e.target.value })} /></label>
