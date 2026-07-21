@@ -10,7 +10,7 @@ export function AdminPageShell({ active, controller, children }: { active: Admin
   return (
     <main className={controller.dark ? "app dark" : "app"}>
       <section className="admin-shell">
-        <AdminTopbar />
+        <AdminTopbar active={active} />
         <section className="panel-layout">
           <AdminNavigation
             active={active}
