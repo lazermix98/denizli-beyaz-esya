@@ -31,6 +31,7 @@ export async function POST(request) {
 
   const companyName = String(body.companyName || "").trim();
   const phone = String(body.phone || "").trim();
+  const sectorKey = String(body.sectorKey || "technical_service").trim();
   const adminEmail = String(body.adminEmail || "").trim().toLowerCase();
   const adminPassword = String(body.adminPassword || "");
 
@@ -52,6 +53,7 @@ export async function POST(request) {
       companyName,
       phone,
       whatsapp: normalizePhone(phone),
+      sector: sectorKey,
       adminEmail,
       adminPassword,
     });

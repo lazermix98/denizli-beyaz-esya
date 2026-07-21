@@ -17,7 +17,7 @@ export type Job = { id: string; customer_id: string; title: string; description?
 export type Appointment = { id: string; customer_id: string; job_id?: string; appointment_at: string; status: string; note?: string };
 export type Content = { id: string; content_type: string; topic: string; output: string; created_at?: string };
 export type Template = { id: string; channel: string; title?: string; body: string };
-export type SetupStatus = { ready: boolean; installed: boolean; missingEnv?: string[]; error?: string };
+export type SetupStatus = { ready: boolean; installed: boolean; missingEnv?: string[]; error?: string; sectorKey?: string };
 
 export type AdminData = {
   customers: Customer[];

@@ -10,13 +10,14 @@ export function AdminPageShell({ active, controller, children }: { active: Admin
   return (
     <main className={controller.dark ? "app dark" : "app"}>
       <section className="admin-shell">
-        <AdminTopbar active={active} />
+        <AdminTopbar active={active} sector={controller.sector} />
         <section className="panel-layout">
           <AdminNavigation
             active={active}
             onRefresh={() => void controller.loadData()}
             onTheme={() => controller.setDark((value) => !value)}
             onLogout={() => void controller.logout()}
+            sector={controller.sector}
           />
           <section className="workspace">{children}</section>
         </section>

@@ -3,66 +3,85 @@ import { RecordList } from "../shared/RecordList";
 import type { AdminController } from "../../features/admin/hooks/useAdminController";
 import { currency } from "../../features/shared/utils";
 
-export function DashboardPanel({ controller }: { controller: AdminController }) {
+function metricValue(key: string, controller: AdminController) {
   const customers = controller.summary?.customerCount ?? controller.data.customers.length;
   const requests = controller.summary?.openRequests ?? controller.data.requests.filter((item) => item.status !== "done").length;
   const appointments = controller.summary?.appointmentCount ?? controller.data.appointments.length;
   const jobs = controller.summary?.openJobs ?? controller.data.jobs.filter((item) => item.status !== "done").length;
   const revenue = controller.summary?.revenue ?? controller.data.jobs.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const completed = controller.data.jobs.filter((item) => item.status === "done" || item.status === "completed").length;
-  const chartValues = [customers, requests, appointments, jobs, completed, Math.max(1, Math.round(revenue / 1000))];
+
+  if (key === "customers") return customers;
+  if (key === "requests") return requests;
+  if (key === "appointments") return appointments;
+  if (key === "jobs") return jobs;
+  if (key === "revenue") return currency(Number(revenue || 0));
+  if (key === "completed") return completed;
+  if (key === "stock") return Math.max(0, requests - appointments);
+  if (key === "payments") return currency(Number(revenue || 0) * 0.82);
+  if (key === "devices") return controller.data.devices.length;
+  return 0;
+}
+
+export function DashboardPanel({ controller }: { controller: AdminController }) {
+  const sector = controller.sector;
+  const chartValues = sector.dashboard.metrics.slice(0, 6).map((metric) => {
+    const value = metricValue(metric.key, controller);
+    return typeof value === "number" ? value : Math.max(1, Number(String(value).replace(/\D/g, "")) / 1000);
+  });
   const maxValue = Math.max(...chartValues, 1);
 
   return (
     <section className="dashboard-page">
       <PageHeader
-        eyebrow="Günaydın"
-        title="Operasyon kontrol merkezi"
-        description="Bugünkü talepler, randevular, iş kayıtları ve gelir durumunu tek ekrandan izleyin."
+        eyebrow={sector.dashboard.greeting}
+        title={sector.dashboard.title}
+        description={sector.dashboard.description}
         actions={<button type="button" onClick={() => void controller.loadData()}>Verileri yenile</button>}
       />
 
       <div className="stat-grid">
-        <StatCard label="Toplam müşteri" value={customers} description="CRM kartı ve iletişim kaydı" trend="+36 bu ay" />
-        <StatCard label="Açık talepler" value={requests} description="Dönüş bekleyen servis talepleri" trend="12 acil" tone="warning" />
-        <StatCard label="Bugünkü randevular" value={appointments} description="Planlanan saha ve görüşme akışı" trend="Takvim aktif" />
-        <StatCard label="Devam eden işler" value={jobs} description="Açık servis veya iş kayıtları" trend="Ekipte" />
-        <StatCard label="Aylık ciro" value={currency(Number(revenue || 0))} description="Tamamlanan işlerden hesaplandı" trend="%22 artış" tone="success" />
-        <StatCard label="Kritik stok" value={Math.max(0, requests - appointments)} description="Parça ve takip uyarısı" trend="Kontrol et" tone="danger" />
-        <StatCard label="Tamamlanan işler" value={completed} description="Bu görünümdeki kapalı kayıtlar" trend="Arşivlendi" tone="success" />
-        <StatCard label="Tahsilat durumu" value={currency(Number(revenue || 0) * 0.82)} description="Tahsil edildi varsayımı değil, özet gösterim" trend="Güncel veri" />
+        {sector.dashboard.metrics.map((metric) => (
+          <StatCard
+            key={metric.key}
+            label={metric.label}
+            value={metricValue(metric.key, controller)}
+            description={metric.description}
+            trend={metric.tone === "success" ? "Olumlu" : metric.tone === "danger" ? "Kontrol et" : "Güncel"}
+            tone={metric.tone}
+          />
+        ))}
       </div>
 
       <section className="dashboard-grid">
-        <SectionCard title="Operasyon grafiği" eyebrow="Gerçek özet veriden türetilir" className="span-2">
+        <SectionCard title="Operasyon grafiği" eyebrow={`${sector.name} görünümü`} className="span-2">
           <div className="admin-chart">
             {chartValues.map((value, index) => (
               <span style={{ height: `${Math.max(18, (value / maxValue) * 160)}px` }} key={index} />
             ))}
           </div>
           <div className="chart-legend">
-            {["Müşteri", "Talep", "Randevu", "İş", "Tamamlanan", "Ciro"].map((item) => <span key={item}>{item}</span>)}
+            {sector.dashboard.metrics.slice(0, 6).map((item) => <span key={item.key}>{item.label}</span>)}
           </div>
         </SectionCard>
 
-        <SectionCard title="Servis durumu" eyebrow="Anlık">
+        <SectionCard title={`${sector.dictionary.record} durumu`} eyebrow="Anlık">
           <div className="status-summary">
-            <article><span>Açık talep</span><strong>{requests}</strong></article>
-            <article><span>Randevu</span><strong>{appointments}</strong></article>
-            <article><span>Açık iş</span><strong>{jobs}</strong></article>
-            <article><span>Tamamlanan</span><strong>{completed}</strong></article>
+            {sector.workflows.recordStatuses.slice(0, 4).map((status, index) => (
+              <article key={status}><span>{status}</span><strong>{[metricValue("requests", controller), metricValue("appointments", controller), metricValue("jobs", controller), metricValue("completed", controller)][index]}</strong></article>
+            ))}
           </div>
         </SectionCard>
 
-        <SectionCard title="Bugünkü operasyon" eyebrow="Kısa liste">
+        <SectionCard title="Günlük operasyon" eyebrow={sector.dictionary.staff}>
           <div className="activity-list">
-            <p><StatusBadge>Talep</StatusBadge> Yeni kayıtlar servis planına alınmalı.</p>
-            <p><StatusBadge>Randevu</StatusBadge> Günlük takvim teknisyen akışıyla takip edilir.</p>
-            <p><StatusBadge>PDF</StatusBadge> Tamamlanan işler için servis formu indirilebilir.</p>
+            <p><StatusBadge>{sector.dictionary.record}</StatusBadge> Yeni kayıtlar ilgili akışa alınmalı.</p>
+            <p><StatusBadge>{sector.dictionary.appointment}</StatusBadge> Günlük plan ekip ve müşteri takibiyle ilerler.</p>
+            <p><StatusBadge>{sector.dictionary.payment}</StatusBadge> Gelir ve tahsilatlar raporlara yansır.</p>
           </div>
         </SectionCard>
 
-        <RecordList title="Son talepler" items={controller.data.requests.map((item) => `${item.subject} - ${item.status}`)} />
+        <RecordList title={`Son ${sector.dictionary.record.toLowerCase()}lar`} items={controller.data.requests.map((item) => `${item.subject} - ${item.description || sector.dictionary.record} - ${item.status}`)} />
       </section>
     </section>
   );

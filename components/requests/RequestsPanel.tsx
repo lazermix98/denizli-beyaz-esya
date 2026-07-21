@@ -6,22 +6,23 @@ import type { AdminController } from "../../features/admin/hooks/useAdminControl
 
 export function RequestsPanel({ controller }: { controller: AdminController }) {
   const { data, requestForm, setRequestForm, createRecord } = controller;
+  const record = controller.sector.dictionary.record;
 
   return (
     <CrudCard
-      title="Talepler"
-      description="Web, telefon ve WhatsApp kanallarından gelen talepleri takip edin."
+      title={`${record}lar`}
+      description={`${record} akışlarını web, telefon ve WhatsApp kanallarıyla birlikte takip edin.`}
       items={data.requests.map((item) => `${item.subject} - ${item.description || "Açıklama yok"} - ${item.status}`)}
       loading={controller.routeLoading}
       pagination={controller.pagination}
       onPageChange={controller.changePage}
       onPerPageChange={controller.changePerPage}
     >
-      <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("request", requestForm, "Talep kaydedildi."); }}>
-        <label>Müşteri<SelectCustomer customers={data.customers} value={requestForm.customer_id} onChange={(value) => setRequestForm({ ...requestForm, customer_id: value })} /></label>
+      <form className="form-grid" onSubmit={(e) => { e.preventDefault(); void createRecord("request", requestForm, `${record} kaydedildi.`); }}>
+        <label>{controller.sector.dictionary.customer}<SelectCustomer customers={data.customers} value={requestForm.customer_id} onChange={(value) => setRequestForm({ ...requestForm, customer_id: value })} /></label>
         <label>Konu<input required value={requestForm.subject} onChange={(e) => setRequestForm({ ...requestForm, subject: e.target.value })} /></label>
         <label>Açıklama<input value={requestForm.description} onChange={(e) => setRequestForm({ ...requestForm, description: e.target.value })} /></label>
-        <button type="submit">Talep oluştur</button>
+        <button type="submit">{controller.sector.formLabels.requests || `Yeni ${record.toLowerCase()} oluştur`}</button>
       </form>
     </CrudCard>
   );

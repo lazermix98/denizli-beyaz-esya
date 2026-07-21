@@ -18,6 +18,17 @@ import { WorkRecordsPanel } from "../work-records/WorkRecordsPanel";
 import { useAdminController } from "../../features/admin/hooks/useAdminController";
 import type { AdminSection } from "../../features/shared/types";
 
+export const v1CompatibilityLabels = [
+  "Müşteriler",
+  "Talepler",
+  "Randevular",
+  "İş / servis kayıtları",
+  "AI içerik üretim merkezi",
+  "WhatsApp mesaj şablonları",
+  "PDF rapor oluşturma",
+  "Firma ayarları",
+];
+
 export function AdminApp({ section }: { section: AdminSection }) {
   const controller = useAdminController(section);
 
@@ -33,6 +44,25 @@ export function AdminApp({ section }: { section: AdminSection }) {
     return (
       <>
         <LoginCard controller={controller} />
+        <StatusMessage message={controller.status} />
+      </>
+    );
+  }
+
+  if (!controller.sector.modules.includes(section)) {
+    return (
+      <>
+        <AdminPageShell active="dashboard" controller={controller}>
+          <main className="module-page">
+            <section className="section-card">
+              <div className="section-card-head">
+                <strong>Modül bu sektör için aktif değil</strong>
+                <span>{controller.sector.name}</span>
+              </div>
+              <p className="empty-state">Bu sayfa seçili işletme türünün aktif modül listesinde bulunmuyor.</p>
+            </section>
+          </main>
+        </AdminPageShell>
         <StatusMessage message={controller.status} />
       </>
     );

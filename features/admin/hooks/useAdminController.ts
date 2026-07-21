@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { aiTypes } from "../../ai-content/constants";
 import { companySettings } from "../../settings/company";
+import { defaultSectorKey, getSectorConfig, type SectorKey } from "../../sectors/config";
 import type { AdminData, AdminSection, DashboardSummary, PaginationMeta, SetupStatus } from "../../shared/types";
 import { emptyData } from "../../shared/types";
 import { currency, localDateTime, postJson } from "../../shared/utils";
@@ -37,6 +38,7 @@ export function useAdminController(section: AdminSection) {
   const [dark, setDark] = useState(false);
   const [ready, setReady] = useState(false);
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
+  const [sectorKey, setSectorKey] = useState<SectorKey>(defaultSectorKey);
   const [authenticated, setAuthenticated] = useState(false);
   const [status, setStatus] = useState("");
   const [data, setData] = useState<AdminData>(emptyData);
@@ -59,6 +61,7 @@ export function useAdminController(section: AdminSection) {
   const [templateForm, setTemplateForm] = useState({ channel: "WhatsApp", title: "İlk temas", body: "Merhaba, talebinizi aldık. En kısa sürede dönüş yapacağız." });
   const [aiForm, setAiForm] = useState({ type: aiTypes[0], topic: "Denizli'de aynı gün servis", tone: "güven veren" });
   const [setupForm, setSetupForm] = useState({
+    sectorKey: defaultSectorKey,
     companyName: companySettings.referenceCompany,
     phone: companySettings.phoneDisplay,
     adminEmail: "",
@@ -67,6 +70,7 @@ export function useAdminController(section: AdminSection) {
   const [aiResult, setAiResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
+  const sector = useMemo(() => getSectorConfig(sectorKey), [sectorKey]);
 
   const kpis = useMemo(() => {
     if (summary) {
@@ -138,6 +142,7 @@ export function useAdminController(section: AdminSection) {
       .then((res) => res.json())
       .then((setup: SetupStatus) => {
         setSetupStatus(setup);
+        if (setup.sectorKey) setSectorKey(setup.sectorKey as SectorKey);
         if (!setup.installed) {
           setReady(true);
           return null;
@@ -145,8 +150,9 @@ export function useAdminController(section: AdminSection) {
         return fetch("/api/auth/session", { cache: "no-store" });
       })
       .then((res) => res?.json())
-      .then((session: { authenticated?: boolean } | undefined) => {
+      .then((session: { authenticated?: boolean; user?: { sectorKey?: string | null } } | undefined) => {
         if (!session) return;
+        if (session.user?.sectorKey) setSectorKey(session.user.sectorKey as SectorKey);
         setAuthenticated(Boolean(session.authenticated));
         if (session.authenticated) void loadData(section);
       })
@@ -216,6 +222,7 @@ export function useAdminController(section: AdminSection) {
     try {
       const json = await postJson<{ message?: string }>("/api/setup", setupForm);
       setSetupStatus({ ready: true, installed: true });
+      setSectorKey(setupForm.sectorKey as SectorKey);
       setAuthenticated(true);
       setStatus(json.message || "Kurulum tamamlandı.");
       await loadData(section);
@@ -288,6 +295,9 @@ export function useAdminController(section: AdminSection) {
     setDark,
     ready,
     setupStatus,
+    sector,
+    sectorKey,
+    setSectorKey,
     authenticated,
     status,
     data,
